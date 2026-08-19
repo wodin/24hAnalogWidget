@@ -16,5 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "24hAnalogWidget"
 
-include(":lib")
-include(":phoneWidget")
+include(":app")

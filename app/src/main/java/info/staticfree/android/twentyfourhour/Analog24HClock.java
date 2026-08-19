@@ -45,7 +45,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.TimeZone;
 
-import info.staticfree.android.twentyfourhour.lib.R;
 import info.staticfree.android.twentyfourhour.overlay.DialOverlay;
 import info.staticfree.android.twentyfourhour.overlay.HandsOverlay;
 

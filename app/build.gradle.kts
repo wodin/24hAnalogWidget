@@ -34,5 +34,7 @@ java {
 }
 
 dependencies {
-    implementation(project(":lib"))
+    // jsuntimes: local jar, no upstream coordinates.
+    implementation(fileTree("libs") { include("*.jar") })
+    implementation(libs.androidx.annotation)
 }

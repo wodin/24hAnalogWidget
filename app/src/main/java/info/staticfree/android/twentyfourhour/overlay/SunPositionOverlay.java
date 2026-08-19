@@ -33,10 +33,11 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import info.staticfree.android.twentyfourhour.R;
+
 import java.util.Calendar;
 import java.util.TimeZone;
 
-import info.staticfree.android.twentyfourhour.lib.R;
 import uk.me.jstott.coordconv.LatitudeLongitude;
 import uk.me.jstott.sun.Sun;
 import uk.me.jstott.sun.Time;
