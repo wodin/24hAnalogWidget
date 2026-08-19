@@ -1,5 +1,6 @@
 package info.staticfree.android.twentyfourhour;
 
+import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.ComponentName;
 import android.content.pm.PackageManager;
@@ -7,6 +8,13 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.util.Log;
 
+/**
+ * Candidate G deletes this class outright: every supported device is past
+ * Honeycomb, so the branch below is constant and the whole toggle is dead.
+ * Its lint findings are suppressed rather than fixed, so that fixing them
+ * cannot be mistaken for work that keeps the class alive.
+ */
+@SuppressWarnings("deprecation") // AsyncTask - candidate G deletes this class
 public class AnalogClockApplication extends Application {
 
     private static final String TAG = AnalogClockApplication.class.getSimpleName();
@@ -21,6 +29,7 @@ public class AnalogClockApplication extends Application {
     /**
      * Disables the fixed-sized widgets for Android 3.0+, otherwise disables resizable one.
      */
+    @SuppressLint("ObsoleteSdkInt") // candidate G deletes this class
     private void disableWidgetSizes() {
 
         final PackageManager pm = getPackageManager();
@@ -52,6 +61,7 @@ public class AnalogClockApplication extends Application {
         Log.d(TAG, "Resizable widgets are: " + (supportsResize ? "enabled" : "disabled"));
     }
 
+    @SuppressLint("StaticFieldLeak") // candidate G deletes this class
     private class DisableWidgetTask extends AsyncTask<Void, Void, Boolean> {
 
         @Override

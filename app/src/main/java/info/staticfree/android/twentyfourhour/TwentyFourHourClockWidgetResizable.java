@@ -83,6 +83,10 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
         return 453f * getDisplayDensity(context);
     }
 
+    // The drawing-cache render path is candidate B's: it instantiates a View and
+    // lies to it about its lifecycle. Deprecations suppressed rather than ported,
+    // since B replaces the path rather than modernising it.
+    @SuppressWarnings("deprecation") // View drawing cache - candidate B
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         final RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.widget);
