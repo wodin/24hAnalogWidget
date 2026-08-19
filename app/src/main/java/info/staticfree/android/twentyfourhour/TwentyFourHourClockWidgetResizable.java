@@ -24,10 +24,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.os.Build;
-import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.WindowManager;
 import android.widget.RemoteViews;
 
 import java.util.Calendar;
@@ -129,8 +126,7 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
             Log.e(TAG, "Could not render widget to bitmap");
         }
 
-        if (!mFirst && Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-
+        if (!mFirst) {
             appWidgetManager.partiallyUpdateAppWidget(appWidgetIds, rv);
         } else {
             appWidgetManager.updateAppWidget(appWidgetIds, rv);
@@ -142,10 +138,7 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
     }
 
     protected float getDisplayDensity(Context context) {
-        final DisplayMetrics dm = new DisplayMetrics();
-        ((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay()
-                .getMetrics(dm);
-        return dm.density;
+        return context.getResources().getDisplayMetrics().density;
     }
 
     /**

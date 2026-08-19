@@ -34,7 +34,6 @@ package info.staticfree.android.twentyfourhour;
 
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
@@ -102,12 +101,12 @@ public class Analog24HClock extends View {
 
         Drawable hourHand = attrs.getDrawable(R.styleable.Analog24HClock_hour_hand);
         if (hourHand == null) {
-            hourHand = context.getResources().getDrawable(R.drawable.hour_hand);
+            hourHand = context.getDrawable(R.drawable.hour_hand);
         }
 
         Drawable minuteHand = attrs.getDrawable(R.styleable.Analog24HClock_minute_hand);
         if (minuteHand == null) {
-            minuteHand = context.getResources().getDrawable(R.drawable.minute_hand);
+            minuteHand = context.getDrawable(R.drawable.minute_hand);
         }
 
         mCalendar = Calendar.getInstance();
@@ -116,8 +115,7 @@ public class Analog24HClock extends View {
     }
 
     public void setFace(int drawableRes) {
-        final Resources r = getResources();
-        setFace(r.getDrawable(drawableRes));
+        setFace(getContext().getDrawable(drawableRes));
     }
 
     public void setFace(Drawable face) {
