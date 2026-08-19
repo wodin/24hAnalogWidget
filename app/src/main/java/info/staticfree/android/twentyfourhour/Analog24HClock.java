@@ -90,8 +90,19 @@ public class Analog24HClock extends View {
     }
 
     private void init(Context context, AttributeSet attributeSet, int defStyle) {
-        final TypedArray attrs = context.obtainStyledAttributes(attributeSet, R.styleable.Analog24HClock, defStyle, 0);
-        Drawable face = attrs.getDrawable(R.styleable.Analog24HClock_face);
+        final Drawable face;
+        Drawable hourHand;
+        Drawable minuteHand;
+
+        final TypedArray attrs = context
+                .obtainStyledAttributes(attributeSet, R.styleable.Analog24HClock, defStyle, 0);
+        try {
+            face = attrs.getDrawable(R.styleable.Analog24HClock_face);
+            hourHand = attrs.getDrawable(R.styleable.Analog24HClock_hour_hand);
+            minuteHand = attrs.getDrawable(R.styleable.Analog24HClock_minute_hand);
+        } finally {
+            attrs.recycle();
+        }
 
         if (face != null) {
             setFace(face);
@@ -99,12 +110,10 @@ public class Analog24HClock extends View {
             setFace(R.drawable.clock_face);
         }
 
-        Drawable hourHand = attrs.getDrawable(R.styleable.Analog24HClock_hour_hand);
         if (hourHand == null) {
             hourHand = context.getDrawable(R.drawable.hour_hand);
         }
 
-        Drawable minuteHand = attrs.getDrawable(R.styleable.Analog24HClock_minute_hand);
         if (minuteHand == null) {
             minuteHand = context.getDrawable(R.drawable.minute_hand);
         }
