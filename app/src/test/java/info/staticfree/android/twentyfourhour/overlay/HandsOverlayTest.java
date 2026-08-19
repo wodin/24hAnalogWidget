@@ -36,4 +36,14 @@ public class HandsOverlayTest {
     public void sixInTheEveningPointsRight() {
         assertEquals(90f, HandsOverlay.getHourHandAngle(18, 0), TOLERANCE);
     }
+
+    /**
+     * One circle per day is 15 degrees per hour, so a quarter degree per minute.
+     * Without this case the whole-hour tests above pass even if the minute term
+     * is doubled.
+     */
+    @Test
+    public void hourHandDriftsAQuarterDegreePerMinute() {
+        assertEquals(7.5f, HandsOverlay.getHourHandAngle(12, 30), TOLERANCE);
+    }
 }

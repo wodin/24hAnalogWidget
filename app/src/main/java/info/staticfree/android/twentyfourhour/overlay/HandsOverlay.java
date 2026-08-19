@@ -6,10 +6,9 @@ import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import androidx.annotation.NonNull;
 
-import info.staticfree.android.twentyfourhour.R;
-
 import java.util.Calendar;
 
+import info.staticfree.android.twentyfourhour.R;
 
 public class HandsOverlay implements DialOverlay {
     private final Drawable hour;
