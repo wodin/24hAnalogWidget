@@ -9,16 +9,18 @@ import android.os.Build;
 import android.util.Log;
 
 /**
- * Candidate G deletes this class outright: every supported device is past
- * Honeycomb, so the branch below is constant and the whole toggle is dead.
- * Its lint findings are suppressed rather than fixed, so that fixing them
- * cannot be mistaken for work that keeps the class alive.
+ * Dead weight kept alive only until the architecture review's candidate G runs.
+ * Every supported device is past Honeycomb, so {@code supportsResize} below is
+ * constant, the else-branches are unreachable, and the toggle only ever
+ * disables the two fixed-size widgets. The lint and deprecation findings in
+ * here are suppressed at their narrowest scope rather than fixed, so that
+ * modernising them cannot be mistaken for work that keeps the class alive.
  */
-@SuppressWarnings("deprecation") // AsyncTask - candidate G deletes this class
 public class AnalogClockApplication extends Application {
 
     private static final String TAG = AnalogClockApplication.class.getSimpleName();
 
+    @SuppressWarnings("deprecation") // AsyncTask.execute - see class javadoc
     @Override
     public void onCreate() {
         super.onCreate();
@@ -29,7 +31,7 @@ public class AnalogClockApplication extends Application {
     /**
      * Disables the fixed-sized widgets for Android 3.0+, otherwise disables resizable one.
      */
-    @SuppressLint("ObsoleteSdkInt") // candidate G deletes this class
+    @SuppressLint("ObsoleteSdkInt") // constant at minSdk 26 - see class javadoc
     private void disableWidgetSizes() {
 
         final PackageManager pm = getPackageManager();
@@ -61,7 +63,8 @@ public class AnalogClockApplication extends Application {
         Log.d(TAG, "Resizable widgets are: " + (supportsResize ? "enabled" : "disabled"));
     }
 
-    @SuppressLint("StaticFieldLeak") // candidate G deletes this class
+    @SuppressLint("StaticFieldLeak")
+    @SuppressWarnings("deprecation") // AsyncTask - see class javadoc
     private class DisableWidgetTask extends AsyncTask<Void, Void, Boolean> {
 
         @Override

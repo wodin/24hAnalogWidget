@@ -24,9 +24,9 @@ two — hour and minute, no second — and the hour hand turns at half the rate 
 _Avoid_: pointer, needle, arm
 
 **Overlay**:
-Anything drawn on the dial above the face — today the hands and the sun
-position. The set is open, so what a dial shows is decided by which overlays it
-is given.
+Anything drawn on the dial above the face — the hands and the sun position among
+them. The set is open, so what a dial shows is decided by which overlays it is
+given.
 _Avoid_: layer, decoration, plugin
 
 ## The sun

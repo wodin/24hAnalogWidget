@@ -25,6 +25,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.util.Log;
+import android.view.View;
 import android.widget.RemoteViews;
 
 import java.util.Calendar;
@@ -83,10 +84,6 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
         return 453f * getDisplayDensity(context);
     }
 
-    // The drawing-cache render path is candidate B's: it instantiates a View and
-    // lies to it about its lifecycle. Deprecations suppressed rather than ported,
-    // since B replaces the path rather than modernising it.
-    @SuppressWarnings("deprecation") // View drawing cache - candidate B
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         final RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.widget);
@@ -101,14 +98,13 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
             clock.measure(s, s);
             clock.layout(0, 0, s, s);
             Log.d(TAG, "size is " + s);
-            clock.setDrawingCacheEnabled(true);
 
             final PendingIntent intent = ClockUtil.getClockIntent(context);
             if (intent != null) {
                 rv.setOnClickPendingIntent(R.id.clock, intent);
             }
 
-            mCached = clock.getDrawingCache(true);
+            mCached = renderViaDrawingCache(clock);
         }
 
         boolean shouldRecycle = false;
@@ -139,6 +135,19 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
         if (shouldRecycle) {
             mCached.recycle();
         }
+    }
+
+    /**
+     * Renders a View through the drawing cache, an API deprecated since API 28.
+     * The whole path is slated for replacement by the architecture review's
+     * candidate B, which owns the wider defect that this receiver instantiates a
+     * View and lies to it about its lifecycle. Isolated here so the suppression
+     * covers these two calls and nothing else.
+     */
+    @SuppressWarnings("deprecation")
+    private static Bitmap renderViaDrawingCache(View view) {
+        view.setDrawingCacheEnabled(true);
+        return view.getDrawingCache(true);
     }
 
     protected float getDisplayDensity(Context context) {
