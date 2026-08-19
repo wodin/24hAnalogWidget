@@ -30,5 +30,6 @@ The watch face was the only caller of `SunPositionOverlay.setLocation`. The
 phone widget never called it even upstream, so it has always drawn the
 Placeholder; what this deletion removed is the only code that ever supplied a
 real location. The manifest's two location permissions are consequently unused.
-`DateOverlay` and `DebugOverlay` likewise lost their only callers; both remain
-in the tree.
+`DateOverlay` and `DebugOverlay` likewise lost their only callers. Both were
+left in the tree here and deleted in the lint phase that followed, once the
+triage confirmed no later candidate wanted them.
