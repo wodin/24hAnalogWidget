@@ -1,48 +1,22 @@
 package info.staticfree.android.twentyfourhour.overlay;
 
-import android.content.Context;
-import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import androidx.annotation.NonNull;
 
 import java.util.Calendar;
 
-import info.staticfree.android.twentyfourhour.R;
-
 public class HandsOverlay implements DialOverlay {
-    private final Drawable hour;
-    private final Drawable minute;
+    private final Drawable hourHand;
+    private final Drawable minuteHand;
 
     private float mHourRot;
     private float mMinRot;
     private boolean mShowSeconds;
-    private final boolean useLargeFace;
-
-    public HandsOverlay(Context context, boolean useLargeFace) {
-        Resources r = context.getResources();
-
-        this.useLargeFace = useLargeFace;
-
-        hour = r.getDrawable(this.useLargeFace ? R.drawable.hour_hand_large : R.drawable.hour_hand);
-        minute = r.getDrawable(
-                this.useLargeFace ? R.drawable.minute_hand_large : R.drawable.minute_hand);
-    }
 
     public HandsOverlay(@NonNull Drawable hourHand, @NonNull Drawable minuteHand) {
-        useLargeFace = false;
-
-        hour = hourHand;
-        minute = minuteHand;
-    }
-
-    public HandsOverlay(@NonNull Context context, int hourHandRes, int minuteHandRes) {
-        Resources r = context.getResources();
-
-        useLargeFace = false;
-
-        hour = r.getDrawable(hourHandRes);
-        minute = r.getDrawable(minuteHandRes);
+        this.hourHand = hourHand;
+        this.minuteHand = minuteHand;
     }
 
     @Override
@@ -51,8 +25,8 @@ public class HandsOverlay implements DialOverlay {
 
         updateHands(calendar);
 
-        drawHand(canvas, minute, mMinRot, cX, cY, sizeChanged);
-        drawHand(canvas, hour, mHourRot, cX, cY, sizeChanged);
+        drawHand(canvas, minuteHand, mMinRot, cX, cY, sizeChanged);
+        drawHand(canvas, hourHand, mHourRot, cX, cY, sizeChanged);
     }
 
     private void drawHand(@NonNull Canvas canvas, @NonNull Drawable hand, float angle, int cX,
@@ -78,15 +52,15 @@ public class HandsOverlay implements DialOverlay {
     }
 
     private void updateHands(Calendar calendar) {
-        int h = calendar.get(Calendar.HOUR_OF_DAY);
-        int m = calendar.get(Calendar.MINUTE);
-        int s = calendar.get(Calendar.SECOND);
+        int hourOfDay = calendar.get(Calendar.HOUR_OF_DAY);
+        int minute = calendar.get(Calendar.MINUTE);
+        int second = calendar.get(Calendar.SECOND);
 
-        mHourRot = getHourHandAngle(h, m);
-        mMinRot = (m / 60.0f) * 360 + (mShowSeconds ? ((s / 60.0f) * 360 / 60.0f) : 0);
+        mHourRot = getHourHandAngle(hourOfDay, minute);
+        mMinRot = (minute / 60.0f) * 360 + (mShowSeconds ? ((second / 60.0f) * 360 / 60.0f) : 0);
     }
 
-    public static float getHourHandAngle(int h, int m) {
-        return ((12 + h) / 24.0f * 360) % 360 + (m / 60.0f) * 360 / 24.0f;
+    public static float getHourHandAngle(int hourOfDay, int minute) {
+        return ((12 + hourOfDay) / 24.0f * 360) % 360 + (minute / 60.0f) * 360 / 24.0f;
     }
 }
