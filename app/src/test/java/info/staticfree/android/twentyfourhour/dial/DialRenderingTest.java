@@ -1,5 +1,13 @@
-package info.staticfree.android.twentyfourhour;
+package info.staticfree.android.twentyfourhour.dial;
 
+import static info.staticfree.android.twentyfourhour.dial.Artwork.BEYOND_HOUR_HAND;
+import static info.staticfree.android.twentyfourhour.dial.Artwork.INSIDE_FACE_EDGE;
+import static info.staticfree.android.twentyfourhour.dial.Artwork.INTRINSIC_PX;
+import static info.staticfree.android.twentyfourhour.dial.Artwork.OUTSIDE_HALVED_FACE_EDGE;
+import static info.staticfree.android.twentyfourhour.dial.Artwork.OUTSIDE_INTRINSIC_BOX;
+import static info.staticfree.android.twentyfourhour.dial.Artwork.WITHIN_HOUR_HAND;
+import static info.staticfree.android.twentyfourhour.dial.Artwork.isFace;
+import static info.staticfree.android.twentyfourhour.dial.Artwork.isHand;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -7,10 +15,9 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.view.View;
+import android.graphics.Rect;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -19,8 +26,10 @@ import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
 
-import java.util.Calendar;
-import java.util.TimeZone;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.Month;
+import java.time.ZoneOffset;
 
 import info.staticfree.android.twentyfourhour.overlay.DialOverlay;
 import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
@@ -40,40 +49,16 @@ import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
  * specification, so those assertions are able to disagree with the
  * implementation, as {@link
  * info.staticfree.android.twentyfourhour.overlay.HandsOverlayTest} already does.
- * The radii are instead read off the artwork, the only authority on its own
- * dimensions. They say where to look, never what should be found there.
+ * The radii come instead from {@link Artwork}, which reads them off the
+ * drawables: they say where to look, never what should be found there.
  */
 @RunWith(RobolectricTestRunner.class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "xhdpi")
-public class Analog24HClockRenderingTest {
+public class DialRenderingTest {
 
-    /** The Face artwork is 196dp square; the {@code xhdpi} qualifier makes that 392px. */
-    private static final int INTRINSIC_PX = 392;
-
-    /** Half of that: too little room for the artwork, so the draw path must shrink it. */
+    /** Half the artwork: too little room, so the draw path must shrink it. */
     private static final int HALVED_PX = INTRINSIC_PX / 2;
-
-    /**
-     * Radii in pixels from the centre. The hour hand's artwork reaches 98px and
-     * the minute hand's 137px, so the radius of a probe alone decides which
-     * hands could possibly be under it.
-     */
-    private static final int WITHIN_HOUR_HAND = 80;
-
-    private static final int BEYOND_HOUR_HAND = 120;
-
-    /** Just inside the Face's painted circle, whose artwork ends at 187px. */
-    private static final int INSIDE_FACE_EDGE = 180;
-
-    /** Just outside that circle once halved, and still inside a half-sized canvas. */
-    private static final int OUTSIDE_HALVED_FACE_EDGE = 96;
-
-    /**
-     * Outside the 392px box the artwork occupies at intrinsic size, so nothing
-     * drawn at intrinsic size can reach here however it is positioned.
-     */
-    private static final int OUTSIDE_INTRINSIC_BOX = 220;
 
     /** Puts a probe 60px from the centre on the diagonal, well inside the shaded inset. */
     private static final int DIAGONAL_OFFSET = 42;
@@ -83,6 +68,11 @@ public class Analog24HClockRenderingTest {
 
     /** Levels of red. Comfortably more than the hatch's dither, far less than its shading. */
     private static final double SHADING_MARGIN = 1;
+
+    @Test
+    public void theIntrinsicSizeIsTheSizeOfTheFaceArtwork() {
+        assertEquals(INTRINSIC_PX, Dial.createStandard(context()).getIntrinsicSize());
+    }
 
     @Test
     public void noonPutsBothHandsAtTheTop() {
@@ -127,16 +117,12 @@ public class Analog24HClockRenderingTest {
      * Given less room than the artwork needs, the dial shrinks to fit: a whole
      * dial, smaller, rather than a cropped one. Both the Face and the hands go
      * down together, so a hand sits at half the radius it occupies untouched.
-     *
-     * <p>Only the draw path is netted here. Measurement is deliberately left
-     * out: the View's {@code onMeasure} is an adapter detail that the extraction
-     * is expected to replace, whereas the drawing must survive it unchanged.
      */
     @Test
-    public void aSmallerCanvasShrinksTheWholeDialToFit() {
+    public void smallerBoundsShrinkTheWholeDialToFit() {
         Bitmap dial = render(HALVED_PX, at(18, 0));
 
-        assertOpaque("the Face should have shrunk to fit the canvas", dial,
+        assertOpaque("the Face should have shrunk to fit the bounds", dial,
                 INSIDE_FACE_EDGE / 2, 0);
         assertEmpty("the Face should end at half its usual radius, not overflow", dial,
                 OUTSIDE_HALVED_FACE_EDGE, 0);
@@ -154,7 +140,7 @@ public class Analog24HClockRenderingTest {
      * discover it.
      */
     @Test
-    public void aLargerCanvasLeavesTheDialAtItsIntrinsicSizeAndCentred() {
+    public void largerBoundsLeaveTheDialAtItsIntrinsicSizeAndCentred() {
         Bitmap dial = render(2 * INTRINSIC_PX, at(12, 0));
 
         assertEmpty("the corner should be empty", dial, -INTRINSIC_PX, -INTRINSIC_PX);
@@ -164,11 +150,32 @@ public class Analog24HClockRenderingTest {
                     sign * INSIDE_FACE_EDGE, 0);
             assertOpaque("the Face should still end where its artwork ends", dial,
                     0, sign * INSIDE_FACE_EDGE);
-            assertEmpty("the dial should not have grown into the larger canvas", dial,
+            assertEmpty("the dial should not have grown into the larger bounds", dial,
                     sign * OUTSIDE_INTRINSIC_BOX, 0);
-            assertEmpty("the dial should not have grown into the larger canvas", dial,
+            assertEmpty("the dial should not have grown into the larger bounds", dial,
                     0, sign * OUTSIDE_INTRINSIC_BOX);
         }
+    }
+
+    /**
+     * The bounds are a rectangle in a canvas, not the canvas itself: the dial
+     * goes where it is told and touches nothing outside. This is the one thing
+     * the old View could not be asked — it always drew across the whole of
+     * itself — so it is an addition to the net rather than a retarget of it.
+     */
+    @Test
+    public void theDialDrawsInsideItsBoundsAndNowhereElse() {
+        Bitmap wide = Bitmap.createBitmap(2 * INTRINSIC_PX, INTRINSIC_PX, Bitmap.Config.ARGB_8888);
+        Rect rightHalf = new Rect(INTRINSIC_PX, 0, 2 * INTRINSIC_PX, INTRINSIC_PX);
+
+        Dial.createStandard(context())
+                .draw(new Canvas(wide), rightHalf, at(12, 0), ZoneOffset.UTC);
+
+        assertTrue("a hand should cover the top of the dial in the right half",
+                isHand(wide.getPixel(rightHalf.centerX(),
+                        rightHalf.centerY() - WITHIN_HOUR_HAND)));
+        assertEquals("the half outside the bounds should be untouched", 0,
+                Color.alpha(wide.getPixel(INTRINSIC_PX / 2, INTRINSIC_PX / 2)));
     }
 
     /**
@@ -196,31 +203,16 @@ public class Analog24HClockRenderingTest {
                 meanRed(shaded, -DIAGONAL_OFFSET, -DIAGONAL_OFFSET), 0);
     }
 
-    private static Bitmap render(int sizePx, @NonNull Calendar time) {
-        return render(sizePx, time, null);
-    }
-
     /**
-     * Measures, lays out and draws the View by hand, since nothing here does it
-     * for us. The widget drives its own View through a similar sequence but
-     * passes a raw size where a MeasureSpec belongs; this passes a well-formed
-     * one, because what the net has to preserve is the drawing, not the widget's
-     * misuse of measurement.
+     * A square bitmap with the dial drawn across the whole of it. No View, no
+     * measure and no layout: a Dial needs a canvas, a rectangle and a moment,
+     * and the whole point of the extraction is that it needs nothing else.
      */
-    private static Bitmap render(int sizePx, @NonNull Calendar time,
-            @Nullable DialOverlay overlay) {
-        Analog24HClock clock = new Analog24HClock(context());
-        if (overlay != null) {
-            clock.addDialOverlay(overlay);
-        }
-        clock.setTime(time);
-
-        int spec = View.MeasureSpec.makeMeasureSpec(sizePx, View.MeasureSpec.EXACTLY);
-        clock.measure(spec, spec);
-        clock.layout(0, 0, sizePx, sizePx);
-
+    private static Bitmap render(int sizePx, @NonNull Instant time,
+            @NonNull DialOverlay... overlays) {
         Bitmap bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888);
-        clock.draw(new Canvas(bitmap));
+        Dial.createStandard(context(), overlays)
+                .draw(new Canvas(bitmap), new Rect(0, 0, sizePx, sizePx), time, ZoneOffset.UTC);
         return bitmap;
     }
 
@@ -228,12 +220,9 @@ public class Analog24HClockRenderingTest {
         return RuntimeEnvironment.getApplication();
     }
 
-    /** A fixed instant, in UTC so the host's timezone cannot move the hands. */
-    private static Calendar at(int hourOfDay, int minute) {
-        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-        calendar.clear();
-        calendar.set(2026, Calendar.MARCH, 20, hourOfDay, minute, 0);
-        return calendar;
+    /** A fixed instant, read in UTC so the host's timezone cannot move the hands. */
+    private static Instant at(int hourOfDay, int minute) {
+        return LocalDateTime.of(2026, Month.MARCH, 20, hourOfDay, minute).toInstant(ZoneOffset.UTC);
     }
 
     /** The pixel that many pixels right of, and below, the centre of the render. */
@@ -247,20 +236,6 @@ public class Analog24HClockRenderingTest {
 
     private static void assertEmpty(String reason, @NonNull Bitmap dial, int dx, int dy) {
         assertEquals(reason, 0, Color.alpha(probe(dial, dx, dy)));
-    }
-
-    /** The hands are painted a near-black #141414. */
-    private static boolean isHand(int pixel) {
-        return Color.alpha(pixel) == 255 && Color.red(pixel) < 0x40;
-    }
-
-    /**
-     * Bare Face rather than a hand over it. Everywhere these tests probe the
-     * Face is a light grey above #A0, so the two never blur together. Stronger
-     * than "not a hand", which an unpainted pixel would satisfy just as well.
-     */
-    private static boolean isFace(int pixel) {
-        return Color.alpha(pixel) == 255 && Color.red(pixel) > 0x80;
     }
 
     /** Mean redness of a small patch, for comparing shaded artwork against bare. */

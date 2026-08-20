@@ -20,6 +20,8 @@ package info.staticfree.android.twentyfourhour;
 import android.app.Activity;
 import android.os.Bundle;
 
+import info.staticfree.android.twentyfourhour.dial.Dial;
+import info.staticfree.android.twentyfourhour.dial.DialView;
 import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
 
 public class WidgetDemo extends Activity {
@@ -30,8 +32,8 @@ public class WidgetDemo extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
-        final Analog24HClock clock = (Analog24HClock) findViewById(R.id.clock);
+        final DialView dialView = findViewById(R.id.dial);
 
-        clock.addDialOverlay(new SunPositionOverlay(this));
+        dialView.setDial(Dial.createStandard(this, new SunPositionOverlay(this)));
     }
 }

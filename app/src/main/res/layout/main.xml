@@ -5,8 +5,8 @@
     android:layout_height="fill_parent"
     android:orientation="vertical">
 
-    <info.staticfree.android.twentyfourhour.Analog24HClock
-        android:id="@+id/clock"
+    <info.staticfree.android.twentyfourhour.dial.DialView
+        android:id="@+id/dial"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:layout_above="@+id/intro_text"

@@ -30,13 +30,15 @@ import android.widget.RemoteViews;
 
 import java.util.Calendar;
 
+import info.staticfree.android.twentyfourhour.dial.Dial;
+import info.staticfree.android.twentyfourhour.dial.DialView;
 import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
 
 public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
 
     private static final String TAG = TwentyFourHourClockWidgetResizable.class.getSimpleName();
 
-    private Analog24HClock clock;
+    private DialView dialView;
     private boolean mFirst = true;
     private Bitmap mCached = null;
 
@@ -88,15 +90,18 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         final RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.widget);
 
-        if (clock == null) {
-            clock = new Analog24HClock(context);
-            clock.setShowSeconds(false);
-            clock.addDialOverlay(new SunPositionOverlay(context));
+        if (dialView == null) {
+            dialView = new DialView(context);
+            dialView.setDial(
+                    Dial.createStandard(context, new SunPositionOverlay(context)));
 
             final int s = (int) getSize(context);
-            clock.onSizeChanged(s, s, 0, 0);
-            clock.measure(s, s);
-            clock.layout(0, 0, s, s);
+            // A raw size where a MeasureSpec belongs: its top two bits read as
+            // UNSPECIFIED, so the view measures its intrinsic size and the layout
+            // below is what actually sets the size. Candidate B's S2 deletes the
+            // whole measure/layout/drawing-cache path rather than repairing it.
+            dialView.measure(s, s);
+            dialView.layout(0, 0, s, s);
             Log.d(TAG, "size is " + s);
 
             final PendingIntent intent = ClockUtil.getClockIntent(context);
@@ -104,7 +109,7 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
                 rv.setOnClickPendingIntent(R.id.clock, intent);
             }
 
-            mCached = renderViaDrawingCache(clock);
+            mCached = renderViaDrawingCache(dialView);
         }
 
         boolean shouldRecycle = false;
@@ -113,7 +118,7 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
             final int s = (int) getSize(context);
             mCached = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888);
             final Canvas c = new Canvas(mCached);
-            clock.draw(c);
+            dialView.draw(c);
 
             // make it immutable
             mCached = Bitmap.createBitmap(mCached);
