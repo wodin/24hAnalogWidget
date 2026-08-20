@@ -38,27 +38,19 @@ import info.staticfree.android.twentyfourhour.TwentyFourHourClockWidgetResizable
  * {@link #schedule} may be called by anything that redraws the widget without
  * anyone counting the calls.
  *
- * <p>It is <em>not</em> because a repeat drifts. <strong>Measured</strong> on
- * the API 34 emulator on 2026-08-20: across six fires, {@code origWhen} walked
- * 15:41:00 → 15:42:00 → … → 15:46:00, every one exactly on the boundary,
- * because {@code AlarmManagerService} computes each period from the original
- * anchor and not from when the last one actually fired. What a repeat does cost
- * is its batching window, which the framework derives from the repeat interval:
- * a minutely repeat reported {@code window=+45s0ms} and, measured, spent most of
- * it — the dial changed some 45 seconds into the minute it was already showing.
- * A one-shot's window is derived instead from how far off its own trigger is,
- * which after the first link is always less than a minute and shrinks the later
- * the previous redraw was.
+ * <p>Not a repeat, not a wakeup, and not an exact alarm. In short: a repeat
+ * does not drift, but the framework derives its batching window from the repeat
+ * interval, so a minutely one asks to be run any time in the following 45
+ * seconds and takes most of them; {@link AlarmManager#RTC} is <em>defined</em>
+ * as delivered at the next moment the device is awake, which is already
+ * "redraw when someone starts looking"; and an exact alarm needs a permission
+ * that is denied by default from API 34 and meant for alarm clocks.
  *
- * <p>Nothing here is a wakeup. A minute hand nobody is looking at is not worth
- * spending battery on, and {@link AlarmManager#RTC} is <em>defined</em> as
- * delivered at the next moment the device is awake — so "redraw when someone
- * starts looking" is the alarm type's own semantics rather than something this
- * app has to arrange with a screen-on receiver it has no process to register.
- *
- * <p>Not an exact alarm either. {@code SCHEDULE_EXACT_ALARM} is denied by
- * default from API 34 and {@code USE_EXACT_ALARM} is meant for alarm clocks; a
- * minute hand does not need to be right inside a pocket.
+ * <p>Each of those is a policy trade rather than a fact about this code, and
+ * each was measured before it was chosen. The measurements live in
+ * {@code docs/adr/0003-the-widget-tick.md}, which is also where to look before
+ * changing any of them — including the one defect they did not fix, that the
+ * dial can still be most of a minute behind.
  */
 public final class Tick {
 

@@ -13,9 +13,9 @@ an angle on the dial is a time of day — the identity the sun drawing rests on.
 _Avoid_: clock, circle
 
 **Face**:
-The fixed artwork of the dial: its numbers and tick marks. Stateless, and
+The fixed artwork of the dial: its numbers and graduations. Stateless, and
 identical at every moment.
-_Avoid_: background, dial
+_Avoid_: background, dial, tick marks
 
 **Hand**:
 A pointer that rotates about the centre of the dial to show a time. There are
@@ -70,3 +70,10 @@ in one breath — the cell in portrait and the same cell in landscape — so a c
 is not one width and one height. Each widget has its own, which is why a picture
 answers to one widget rather than to all of them.
 _Avoid_: size, bounds, tile, slot
+
+**Tick**:
+The schedule the widget's picture is redrawn on: once at the top of every
+minute, which is as often as a dial with no second hand can change. A chain
+rather than a standing order — each redraw arms the next one — so any redraw at
+all restores the schedule.
+_Avoid_: refresh, poll, frame
