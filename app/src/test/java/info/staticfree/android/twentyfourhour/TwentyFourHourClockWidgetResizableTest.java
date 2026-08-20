@@ -36,9 +36,10 @@ import java.util.List;
  * and the picture it hands the host.
  *
  * <p>Part of it is a <em>characterisation</em> net, asserting what the receiver
- * does today precisely so that changing it is deliberate: the alarm repeats
- * rather than re-arming, its intent names no receiver, and the bitmap is the
- * artwork's own size whatever the host's cell measures. All three are wrong, all
+ * does today precisely so that changing it is deliberate: the alarm carries a
+ * repeat interval rather than being armed a minute at a time, its intent names
+ * no receiver, and the bitmap is the artwork's own size whatever the host's
+ * cell measures. All three are wrong, all
  * three are about to be fixed, and each one should fail loudly when it is — a
  * flip visible in a diff rather than inferred from a green suite.
  *
@@ -67,11 +68,48 @@ public class TwentyFourHourClockWidgetResizableTest {
     /** A minute, in milliseconds: the repeat the receiver asks for today. */
     private static final long MINUTE_MS = 60_000;
 
+    /**
+     * The tick is armed by an update rather than by {@code onEnabled}, so that
+     * every path which redraws the widget also schedules the next redraw. Why
+     * that is worth having, {@code onUpdate} explains.
+     *
+     * <p>Here is the case it has to hold for: a reboot, which empties the
+     * alarm table — alarms live in the system's memory and nothing writes them
+     * to disk. <strong>Measured</strong> on the API 34 emulator on 2026-08-20:
+     * across two reboots with the widget pinned, the framework delivered
+     * {@code APPWIDGET_ENABLED}, {@code APPWIDGET_UPDATE} and
+     * {@code APPWIDGET_UPDATE_OPTIONS} to this receiver, each named explicitly
+     * by component, and the {@code RTC} alarm was back with a fresh anchor
+     * within seconds of {@code sys.boot_completed}. So the update the host
+     * already sends <em>is</em> the re-arm, and a {@code BOOT_COMPLETED}
+     * receiver would add nothing but a process start on every boot with no
+     * widget pinned.
+     */
     @Test
-    public void enablingTheWidgetSchedulesOneAlarm() {
-        enableWidget();
+    public void updatingAWidgetArmsTheTick() {
+        deliver(update(pinWidget()));
 
-        assertEquals("enabling the widget should schedule exactly one alarm", 1,
+        assertEquals("updating a widget should leave exactly one alarm", 1,
+                scheduledAlarms().size());
+    }
+
+    /**
+     * Arming on every update is only safe if arming twice leaves one alarm — and
+     * a widget is updated far more often than it is enabled, so this is the risk
+     * the move creates. It holds by identity rather than by any flag: both
+     * {@code PendingIntent}s are built with the same request code and an intent
+     * equal under {@link Intent#filterEquals}, so they are the same one, and
+     * {@link AlarmManager} replaces the outstanding alarm rather than adding to
+     * it.
+     */
+    @Test
+    public void armingTheTickAgainReplacesItRatherThanAddingOne() {
+        int widgetId = pinWidget();
+
+        deliver(update(widgetId));
+        deliver(update(widgetId));
+
+        assertEquals("a second update should leave one alarm, not two", 1,
                 scheduledAlarms().size());
     }
 
@@ -84,7 +122,7 @@ public class TwentyFourHourClockWidgetResizableTest {
      */
     @Test
     public void theTickRepeatsEveryMinuteOnTheWallClockWithoutWakingTheDevice() {
-        enableWidget();
+        deliver(update(pinWidget()));
 
         assertEquals("the tick should follow the wall clock and not wake the device",
                 AlarmManager.RTC, onlyAlarm().getType());
@@ -105,8 +143,10 @@ public class TwentyFourHourClockWidgetResizableTest {
      */
     @Test
     public void theTickIsAnchoredAtTheTopOfTheNextMinute() {
+        int widgetId = pinWidget();
+
         long before = System.currentTimeMillis();
-        enableWidget();
+        deliver(update(widgetId));
         long after = System.currentTimeMillis();
 
         long triggerAt = onlyAlarm().getTriggerAtMs();
@@ -118,14 +158,17 @@ public class TwentyFourHourClockWidgetResizableTest {
     }
 
     /**
-     * The intent names an action and nothing else. A manifest receiver has not
-     * been reachable by an implicit broadcast since API 26, so this alarm fires
-     * into nothing — which is why the widget stops at whatever the host has
-     * cached. Naming the receiver is the fix, and it lands here.
+     * The intent names an action and nothing else. It arrives all the same,
+     * because the app is sending it to itself: <strong>measured</strong> on the
+     * API 34 emulator, the alarm redraws the widget every minute, while the same
+     * action broadcast from the shell reaches no receiver at all. Naming the
+     * receiver is still the fix — it stops the tick depending on an exemption to
+     * the API 26 rule against implicit broadcasts to manifest receivers — and it
+     * lands in a later slice.
      */
     @Test
     public void theTickIntentNamesNoReceiver() {
-        enableWidget();
+        deliver(update(pinWidget()));
 
         Intent tick = tickPendingIntent().getSavedIntent();
 
@@ -142,7 +185,7 @@ public class TwentyFourHourClockWidgetResizableTest {
      */
     @Test
     public void theTicksPendingIntentIsImmutable() {
-        enableWidget();
+        deliver(update(pinWidget()));
 
         assertTrue("the tick's PendingIntent should be immutable",
                 tickPendingIntent().isImmutable());
@@ -150,7 +193,7 @@ public class TwentyFourHourClockWidgetResizableTest {
 
     @Test
     public void disablingTheWidgetCancelsTheTick() {
-        enableWidget();
+        deliver(update(pinWidget()));
         deliver(new Intent(AppWidgetManager.ACTION_APPWIDGET_DISABLED));
 
         assertTrue("disabling the widget should leave no alarm behind",
@@ -198,19 +241,30 @@ public class TwentyFourHourClockWidgetResizableTest {
     }
 
     /**
-     * Registers a widget with the host, as pinning one from the picker would.
-     * The shadow calls {@code onUpdate} while doing so, which is why every test
-     * that reads a picture back delivers its own update afterwards rather than
-     * trusting this one.
+     * Registers a widget with the host, as pinning one from the picker would,
+     * and leaves nothing of its own behind.
+     *
+     * <p>The shadow drives the receiver while registering, so pinning both draws
+     * a picture and arms a tick. Every test therefore delivers its own update
+     * afterwards rather than trusting that one — and the alarm pinning scheduled
+     * is forgotten here, or it would stand in for whatever the test delivers
+     * next.
+     *
+     * <p>Robolectric offers no {@code clear()} for the alarm table and
+     * deprecated the consuming {@code getNextScheduledAlarm} without putting a
+     * replacement in its place, so draining it is what there is.
      */
+    @SuppressWarnings("deprecation")
     private static int pinWidget() {
-        return shadowOf(appWidgetManager())
+        int widgetId = shadowOf(appWidgetManager())
                 .createWidget(TwentyFourHourClockWidgetResizable.class, R.layout.widget);
-    }
 
-    /** The broadcast the framework sends when the first widget is added. */
-    private static void enableWidget() {
-        deliver(new Intent(AppWidgetManager.ACTION_APPWIDGET_ENABLED));
+        ShadowAlarmManager alarms = shadowOf(context().getSystemService(AlarmManager.class));
+        while (alarms.getNextScheduledAlarm() != null) {
+            // consumed by the call itself
+        }
+
+        return widgetId;
     }
 
     @NonNull

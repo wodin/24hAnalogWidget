@@ -44,13 +44,6 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
     public static String ACTION_CLOCK_UPDATE = "info.staticfree.android.twentyfourhour.ACTION_CLOCK_UPDATE";
 
     @Override
-    public void onEnabled(Context context) {
-        super.onEnabled(context);
-
-        startTicking(context);
-    }
-
-    @Override
     public void onDisabled(Context context) {
         super.onDisabled(context);
 
@@ -78,8 +71,26 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
         }
     }
 
+    /**
+     * Renders the widget and arms the tick that will render it again.
+     *
+     * <p>One rule rather than two hooks: everything that redraws the widget also
+     * schedules the next redraw, so <em>a widget on screen has a tick behind
+     * it</em> is restored by any update at all — including the one the host
+     * sends after a reboot, which is what carries the clock across one.
+     * {@code onEnabled} cannot make that promise: the platform documents its
+     * broadcast as sent when a widget is added <em>for the first time</em>, and
+     * an invariant resting on a hook that says "first time" is resting on
+     * whatever the host happens to do afterwards.
+     *
+     * <p>Armed before the render rather than after, so a render that throws —
+     * an allocation failure under memory pressure, say — costs one redraw rather
+     * than the clock.
+     */
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+        startTicking(context);
+
         final RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.widget);
 
         // Every update is a whole one, so the click intent is attached every
@@ -120,6 +131,10 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
 
     /**
      * Schedules an alarm to update the clock every minute, at the top of the minute.
+     *
+     * <p>Called on every update, and safe to be: the {@link PendingIntent} it
+     * schedules is the same one each time, so {@link AlarmManager} replaces the
+     * outstanding alarm rather than adding to it. See {@link #createUpdate}.
      *
      * @param context application context
      */

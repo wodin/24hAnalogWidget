@@ -79,3 +79,9 @@ anything and the host is left showing the static `initialLayout` artwork. The
 flag is untouched here, because the tick is not this decision's to rewrite, so
 both builds do it and both were driven instead through `ACTION_CLOCK_UPDATE`,
 which reaches `onUpdate` without passing through `onEnabled`.
+
+Both halves of that obstacle have since gone, in candidate E: `b816892` gave the
+`PendingIntent` `FLAG_IMMUTABLE`, so adding the widget renders it, and S3 moved
+the arming into `onUpdate` and deleted the `onEnabled` override altogether. The
+paragraph above records why B's check took the route it did, not how the
+receiver behaves now.
