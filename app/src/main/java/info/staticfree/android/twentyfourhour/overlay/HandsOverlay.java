@@ -4,7 +4,10 @@ import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import androidx.annotation.NonNull;
 
+import java.time.LocalTime;
 import java.util.Calendar;
+
+import info.staticfree.android.twentyfourhour.dial.Dial;
 
 public class HandsOverlay implements DialOverlay {
     private final Drawable hourHand;
@@ -19,11 +22,11 @@ public class HandsOverlay implements DialOverlay {
     public void onDraw(@NonNull Canvas canvas, int cX, int cY, int width, int height,
             @NonNull Calendar calendar, boolean sizeChanged) {
 
-        int hourOfDay = calendar.get(Calendar.HOUR_OF_DAY);
         int minute = calendar.get(Calendar.MINUTE);
 
         float minuteAngle = (minute / 60.0f) * 360;
-        float hourAngle = getHourHandAngle(hourOfDay, minute);
+        float hourAngle =
+                Dial.angleFor(LocalTime.of(calendar.get(Calendar.HOUR_OF_DAY), minute));
 
         drawHand(canvas, minuteHand, minuteAngle, cX, cY, sizeChanged);
         drawHand(canvas, hourHand, hourAngle, cX, cY, sizeChanged);
@@ -45,9 +48,5 @@ public class HandsOverlay implements DialOverlay {
         int w = drawable.getIntrinsicWidth();
         int h = drawable.getIntrinsicHeight();
         drawable.setBounds(cX - (w / 2), cY - (h / 2), cX + (w / 2), cY + (h / 2));
-    }
-
-    public static float getHourHandAngle(int hourOfDay, int minute) {
-        return ((12 + hourOfDay) / 24.0f * 360) % 360 + (minute / 60.0f) * 360 / 24.0f;
     }
 }

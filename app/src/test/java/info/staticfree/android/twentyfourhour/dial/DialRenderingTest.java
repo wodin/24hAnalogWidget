@@ -48,8 +48,7 @@ import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
  * the dial is arranged — noon at the top, an hour hand shorter than the minute
  * hand, a nominal night shaded below the centre — comes from the dial's
  * specification, so those assertions are able to disagree with the
- * implementation, as {@link
- * info.staticfree.android.twentyfourhour.overlay.HandsOverlayTest} already does.
+ * implementation, as {@link DialAngleTest} already does.
  * The radii come instead from {@link Artwork}, which reads them off the
  * drawables: they say where to look, never what should be found there.
  */

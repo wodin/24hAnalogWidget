@@ -40,6 +40,7 @@ import android.graphics.drawable.Drawable;
 import androidx.annotation.NonNull;
 
 import java.time.Instant;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
@@ -67,6 +68,15 @@ import info.staticfree.android.twentyfourhour.overlay.HandsOverlay;
  * answers for both axes.
  */
 public class Dial {
+
+    private static final float DEGREES_PER_TURN = 360;
+
+    /** One turn per day: 15 degrees an hour, so a quarter degree a minute. */
+    private static final float DEGREES_PER_HOUR = DEGREES_PER_TURN / 24;
+    private static final float DEGREES_PER_MINUTE = DEGREES_PER_HOUR / 60;
+
+    /** Midnight sits at the bottom, which is what makes noon the top. */
+    private static final float MIDNIGHT_ANGLE = DEGREES_PER_TURN / 2;
 
     @NonNull
     private final Drawable face;
@@ -99,6 +109,20 @@ public class Dial {
                 context.getDrawable(R.drawable.minute_hand));
 
         return new Dial(context.getDrawable(R.drawable.clock_face), withHands);
+    }
+
+    /**
+     * The angle, in degrees clockwise from straight up, at which {@code time}
+     * falls on the dial. One full turn is one day, so noon is straight up and
+     * midnight straight down — the inverse of a 12-hour clock.
+     *
+     * <p>Static and pure: an overlay needs the mapping, not the Dial that owns
+     * it. Resolved to the minute — any seconds are truncated, not rounded,
+     * because the dial has no second hand.
+     */
+    public static float angleFor(@NonNull LocalTime time) {
+        return (MIDNIGHT_ANGLE + time.getHour() * DEGREES_PER_HOUR +
+                time.getMinute() * DEGREES_PER_MINUTE) % DEGREES_PER_TURN;
     }
 
     /**

@@ -33,10 +33,13 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.time.DateTimeException;
+import java.time.LocalTime;
 import java.util.Calendar;
 import java.util.TimeZone;
 
 import info.staticfree.android.twentyfourhour.R;
+import info.staticfree.android.twentyfourhour.dial.Dial;
 import uk.me.jstott.coordconv.LatitudeLongitude;
 import uk.me.jstott.sun.Sun;
 import uk.me.jstott.sun.Time;
@@ -108,7 +111,7 @@ public class SunPositionOverlay implements DialOverlay {
     }
 
     private float getHourArcAngle(@NonNull Time time) {
-        return (HandsOverlay.getHourHandAngle(time.getHours(), time.getMinutes()) + 270) %
+        return (Dial.angleFor(LocalTime.of(time.getHours(), time.getMinutes())) + 270) %
                 DEGREE_CIRCLE;
     }
 
@@ -168,8 +171,10 @@ public class SunPositionOverlay implements DialOverlay {
             }
 
             // this can happen when lat/lon and the timezone are out of sync, causing impossible
-            // sunrise/sunset times to be calculated.
-        } catch (IllegalArgumentException e) {
+            // sunrise/sunset times to be calculated. Sun reports those by throwing; a Time it
+            // does return, but out of range, fails later in LocalTime.of. Same cause, same
+            // answer.
+        } catch (IllegalArgumentException | DateTimeException e) {
             Log.e(TAG, "Error computing sunrise / sunset time", e);
             drawPlaceholder(canvas);
         }
