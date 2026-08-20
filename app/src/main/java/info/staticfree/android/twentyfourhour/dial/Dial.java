@@ -115,23 +115,23 @@ public class Dial {
      * {@code zone}.
      *
      * <p>The dial occupies the largest square that fits centred in the bounds,
-     * never growing past its intrinsic size. Everything below draws in
-     * intrinsic-size coordinates and the canvas transform does the fitting, so
-     * an overlay never needs to know how large it is being drawn.
+     * growing or shrinking to fill it: the artwork's own size decides how much
+     * detail there is to draw, never how large it is drawn. Everything below
+     * draws in intrinsic-size coordinates and the canvas transform does the
+     * fitting, so an overlay never needs to know how large it is being drawn.
      */
     public void draw(@NonNull Canvas canvas, @NonNull Rect bounds, @NonNull Instant instant,
             @NonNull ZoneId zone) {
         int side = Math.min(bounds.width(), bounds.height());
-        float scale = Math.min(1f, (float) side / intrinsicSize);
-        float drawn = intrinsicSize * scale;
-
-        // Centred in float, so bounds with an odd dimension put the dial on the
-        // true centre rather than half a pixel to one side of it, as the View
-        // this was extracted from did.
+        float scale = (float) side / intrinsicSize;
 
         canvas.save();
-        canvas.translate(bounds.left + (bounds.width() - drawn) / 2f,
-                bounds.top + (bounds.height() - drawn) / 2f);
+
+        // Centred in float, so bounds with an odd spare dimension put the dial
+        // on the true centre rather than half a pixel to one side of it, as the
+        // View this was extracted from did.
+        canvas.translate(bounds.left + (bounds.width() - side) / 2f,
+                bounds.top + (bounds.height() - side) / 2f);
         canvas.scale(scale, scale);
 
         int c = intrinsicSize / 2;

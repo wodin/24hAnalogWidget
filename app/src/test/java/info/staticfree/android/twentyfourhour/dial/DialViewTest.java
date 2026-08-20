@@ -1,8 +1,11 @@
 package info.staticfree.android.twentyfourhour.dial;
 
 import static info.staticfree.android.twentyfourhour.dial.Artwork.INTRINSIC_PX;
+import static info.staticfree.android.twentyfourhour.dial.Artwork.OUTSIDE_INTRINSIC_BOX;
 import static info.staticfree.android.twentyfourhour.dial.Artwork.WITHIN_HOUR_HAND;
+import static info.staticfree.android.twentyfourhour.dial.Artwork.isFace;
 import static info.staticfree.android.twentyfourhour.dial.Artwork.isHand;
+import static info.staticfree.android.twentyfourhour.dial.Artwork.probe;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -54,6 +57,11 @@ public class DialViewTest {
      * Laid out larger than it asked for, the view still hands the dial the whole
      * of itself — the bounds are the view, and what the dial does inside them is
      * the dial's business, asserted in {@link DialRenderingTest}.
+     *
+     * <p>What proves it is the probe past the box the artwork occupies at
+     * intrinsic size: the dial only reaches there when it was given bounds
+     * larger than that to fill. A probe near the centre cannot tell an
+     * intrinsic-sized dial from a filled one, since a hand covers it either way.
      */
     @Test
     public void theViewDrawsTheDialAcrossItsWholeSelf() {
@@ -69,7 +77,9 @@ public class DialViewTest {
         view.draw(new Canvas(bitmap));
 
         assertTrue("a hand should cover the top of the centred dial",
-                isHand(bitmap.getPixel(sizePx / 2, sizePx / 2 - WITHIN_HOUR_HAND)));
+                isHand(probe(bitmap, 0, -WITHIN_HOUR_HAND)));
+        assertTrue("the Face should reach past where it would end at intrinsic size",
+                isFace(probe(bitmap, OUTSIDE_INTRINSIC_BOX, 0)));
     }
 
     /**

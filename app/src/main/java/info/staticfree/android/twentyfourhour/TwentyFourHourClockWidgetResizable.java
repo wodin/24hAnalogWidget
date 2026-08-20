@@ -99,9 +99,11 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
      * Draws the dial into a bitmap the host can show.
      *
      * <p>The bitmap is the dial's intrinsic size, which is the artwork's own, so
-     * it carries no margin the dial could never reach into. What size the
-     * widget's cell actually is, the receiver has no way to ask here; sizing the
-     * bitmap to the cell is the architecture review's candidate E.
+     * the dial is drawn at the resolution it was painted for. The dial fills
+     * whatever bounds it is given, so a larger bitmap would not be a larger
+     * dial, only the same art upscaled. What size the widget's cell actually is,
+     * the receiver has no way to ask here; sizing the bitmap to the cell is the
+     * architecture review's candidate E.
      */
     @NonNull
     private static Bitmap render(@NonNull Context context) {

@@ -33,10 +33,10 @@ import java.time.ZoneId;
  * the scaling and the time all belong to the Dial, and this class only supplies
  * the bounds a View knows and the Dial does not.
  *
- * <p>Keeping this adapter is deliberate. The widget receiver is to become a
- * second host that draws a Dial straight to a bitmap with no View involved, and
- * two hosts is what keeps {@link Dial#draw} shaped like a dial rather than like
- * whichever single caller it happens to have.
+ * <p>Keeping this adapter is deliberate. The widget receiver is a second host,
+ * drawing a Dial straight to a bitmap with no View involved, and two hosts is
+ * what keeps {@link Dial#draw} shaped like a dial rather than like whichever
+ * single caller it happens to have.
  */
 public class DialView extends View {
 

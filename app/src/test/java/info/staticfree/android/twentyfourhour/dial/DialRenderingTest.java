@@ -8,6 +8,7 @@ import static info.staticfree.android.twentyfourhour.dial.Artwork.OUTSIDE_INTRIN
 import static info.staticfree.android.twentyfourhour.dial.Artwork.WITHIN_HOUR_HAND;
 import static info.staticfree.android.twentyfourhour.dial.Artwork.isFace;
 import static info.staticfree.android.twentyfourhour.dial.Artwork.isHand;
+import static info.staticfree.android.twentyfourhour.dial.Artwork.probe;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -133,27 +134,56 @@ public class DialRenderingTest {
     }
 
     /**
-     * Given more room than the artwork needs, today's dial centres itself and
-     * leaves the rest empty rather than growing into it. Recorded because it is
-     * what the extraction has to preserve — and so that the later work making
-     * the dial fill its bounds has to replace this test knowingly rather than
-     * discover it.
+     * Given more room than the artwork needs, the dial grows into it. A probe
+     * past the box the artwork occupies at its own size can only be painted if
+     * the dial scaled up, and that it is painted equally far in all four
+     * directions says it grew about its centre rather than off to one side.
+     *
+     * <p>An earlier characterisation test asserted the opposite: that larger
+     * bounds left the dial at its intrinsic size, centred. It recorded the
+     * behaviour from before the dial was made to fill its bounds, so it was
+     * replaced deliberately rather than found broken.
      */
     @Test
-    public void largerBoundsLeaveTheDialAtItsIntrinsicSizeAndCentred() {
+    public void largerBoundsGrowTheDialToFillThem() {
         Bitmap dial = render(2 * INTRINSIC_PX, at(12, 0));
 
-        assertEmpty("the corner should be empty", dial, -INTRINSIC_PX, -INTRINSIC_PX);
+        for (int sign = -1; sign <= 1; sign += 2) {
+            assertOpaque("the dial should have grown past its intrinsic box", dial,
+                    sign * OUTSIDE_INTRINSIC_BOX, 0);
+            assertOpaque("the dial should have grown past its intrinsic box", dial,
+                    0, sign * OUTSIDE_INTRINSIC_BOX);
+            assertOpaque("the Face should reach the doubled edge of its artwork", dial,
+                    sign * 2 * INSIDE_FACE_EDGE, 0);
+            assertOpaque("the Face should reach the doubled edge of its artwork", dial,
+                    0, sign * 2 * INSIDE_FACE_EDGE);
+        }
+
+        assertEmpty("a grown dial should still be a circle in a square", dial,
+                -INTRINSIC_PX, -INTRINSIC_PX);
+    }
+
+    /**
+     * Bounds taller in one direction than the other hold a square, not a
+     * stretched dial: the shorter side is filled and the longer one keeps its
+     * spare space, split evenly. Every other render in the net is square, so
+     * this is the only one with a leftover dimension to centre.
+     */
+    @Test
+    public void nonSquareBoundsInscribeACentredSquare() {
+        int width = 2 * INTRINSIC_PX;
+        Bitmap dial = Bitmap.createBitmap(width, INTRINSIC_PX, Bitmap.Config.ARGB_8888);
+
+        Dial.createStandard(context()).draw(new Canvas(dial),
+                new Rect(0, 0, width, INTRINSIC_PX), at(12, 0), ZoneOffset.UTC);
 
         for (int sign = -1; sign <= 1; sign += 2) {
-            assertOpaque("the Face should still end where its artwork ends", dial,
-                    sign * INSIDE_FACE_EDGE, 0);
-            assertOpaque("the Face should still end where its artwork ends", dial,
+            assertOpaque("the Face should fill the shorter side of the bounds", dial,
                     0, sign * INSIDE_FACE_EDGE);
-            assertEmpty("the dial should not have grown into the larger bounds", dial,
+            assertOpaque("the square should sit centred in the wider side", dial,
+                    sign * INSIDE_FACE_EDGE, 0);
+            assertEmpty("the dial should not have grown to the wider side", dial,
                     sign * OUTSIDE_INTRINSIC_BOX, 0);
-            assertEmpty("the dial should not have grown into the larger bounds", dial,
-                    0, sign * OUTSIDE_INTRINSIC_BOX);
         }
     }
 
@@ -223,11 +253,6 @@ public class DialRenderingTest {
     /** A fixed instant, read in UTC so the host's timezone cannot move the hands. */
     private static Instant at(int hourOfDay, int minute) {
         return LocalDateTime.of(2026, Month.MARCH, 20, hourOfDay, minute).toInstant(ZoneOffset.UTC);
-    }
-
-    /** The pixel that many pixels right of, and below, the centre of the render. */
-    private static int probe(@NonNull Bitmap dial, int dx, int dy) {
-        return dial.getPixel(dial.getWidth() / 2 + dx, dial.getHeight() / 2 + dy);
     }
 
     private static void assertOpaque(String reason, @NonNull Bitmap dial, int dx, int dy) {
