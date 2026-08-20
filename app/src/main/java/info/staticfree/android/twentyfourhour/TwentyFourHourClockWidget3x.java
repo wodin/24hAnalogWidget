@@ -1,12 +1,9 @@
 package info.staticfree.android.twentyfourhour;
 
-import android.content.Context;
-
-
+/**
+ * The 3x widget. As with {@link TwentyFourHourClockWidget}, all that separates
+ * it from the resizable receiver is its manifest entry and the
+ * {@code widget_3x.xml} that entry points at.
+ */
 public class TwentyFourHourClockWidget3x extends TwentyFourHourClockWidgetResizable {
-
-    @Override
-    protected float getSize(Context context) {
-        return 196 * getDisplayDensity(context);
-    }
 }

@@ -24,23 +24,19 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.util.Log;
-import android.view.View;
+import android.graphics.Rect;
 import android.widget.RemoteViews;
 
+import androidx.annotation.NonNull;
+
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Calendar;
 
 import info.staticfree.android.twentyfourhour.dial.Dial;
-import info.staticfree.android.twentyfourhour.dial.DialView;
 import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
 
 public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
-
-    private static final String TAG = TwentyFourHourClockWidgetResizable.class.getSimpleName();
-
-    private DialView dialView;
-    private boolean mFirst = true;
-    private Bitmap mCached = null;
 
     /**
      * Sending this broadcast intent will cause the clock widgets to update.
@@ -82,81 +78,42 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
         }
     }
 
-    protected float getSize(Context context) {
-        return 453f * getDisplayDensity(context);
-    }
-
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         final RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.widget);
 
-        if (dialView == null) {
-            dialView = new DialView(context);
-            dialView.setDial(
-                    Dial.createStandard(context, new SunPositionOverlay(context)));
-
-            final int s = (int) getSize(context);
-            // A raw size where a MeasureSpec belongs: its top two bits read as
-            // UNSPECIFIED, so the view measures its intrinsic size and the layout
-            // below is what actually sets the size. Candidate B's S2 deletes the
-            // whole measure/layout/drawing-cache path rather than repairing it.
-            dialView.measure(s, s);
-            dialView.layout(0, 0, s, s);
-            Log.d(TAG, "size is " + s);
-
-            final PendingIntent intent = ClockUtil.getClockIntent(context);
-            if (intent != null) {
-                rv.setOnClickPendingIntent(R.id.clock, intent);
-            }
-
-            mCached = renderViaDrawingCache(dialView);
+        // Every update is a whole one, so the click intent is attached every
+        // time rather than once: there is no earlier update left underneath for
+        // it to survive in.
+        final PendingIntent intent = ClockUtil.getClockIntent(context);
+        if (intent != null) {
+            rv.setOnClickPendingIntent(R.id.clock, intent);
         }
 
-        boolean shouldRecycle = false;
+        rv.setImageViewBitmap(R.id.clock, render(context));
 
-        if (mCached == null) {
-            final int s = (int) getSize(context);
-            mCached = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888);
-            final Canvas c = new Canvas(mCached);
-            dialView.draw(c);
-
-            // make it immutable
-            mCached = Bitmap.createBitmap(mCached);
-            shouldRecycle = true;
-        }
-
-        if (mCached != null) {
-            rv.setImageViewBitmap(R.id.clock, mCached);
-        } else {
-            Log.e(TAG, "Could not render widget to bitmap");
-        }
-
-        if (!mFirst) {
-            appWidgetManager.partiallyUpdateAppWidget(appWidgetIds, rv);
-        } else {
-            appWidgetManager.updateAppWidget(appWidgetIds, rv);
-            mFirst = false;
-        }
-        if (shouldRecycle) {
-            mCached.recycle();
-        }
+        appWidgetManager.updateAppWidget(appWidgetIds, rv);
     }
 
     /**
-     * Renders a View through the drawing cache, an API deprecated since API 28.
-     * The whole path is slated for replacement by the architecture review's
-     * candidate B, which owns the wider defect that this receiver instantiates a
-     * View and lies to it about its lifecycle. Isolated here so the suppression
-     * covers these two calls and nothing else.
+     * Draws the dial into a bitmap the host can show.
+     *
+     * <p>The bitmap is the dial's intrinsic size, which is the artwork's own, so
+     * it carries no margin the dial could never reach into. What size the
+     * widget's cell actually is, the receiver has no way to ask here; sizing the
+     * bitmap to the cell is the architecture review's candidate E.
      */
-    @SuppressWarnings("deprecation")
-    private static Bitmap renderViaDrawingCache(View view) {
-        view.setDrawingCacheEnabled(true);
-        return view.getDrawingCache(true);
-    }
+    @NonNull
+    private static Bitmap render(@NonNull Context context) {
+        final Dial dial = Dial.createStandard(context, new SunPositionOverlay(context));
+        final int size = dial.getIntrinsicSize();
 
-    protected float getDisplayDensity(Context context) {
-        return context.getResources().getDisplayMetrics().density;
+        final Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+
+        dial.draw(new Canvas(bitmap), new Rect(0, 0, size, size), Instant.now(),
+                ZoneId.systemDefault());
+
+        return bitmap;
     }
 
     /**
