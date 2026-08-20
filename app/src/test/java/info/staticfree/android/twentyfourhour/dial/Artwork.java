@@ -12,13 +12,15 @@ import androidx.annotation.NonNull;
  * looking at — never what ought to be found there. Expectations about how the
  * dial is arranged belong in the tests.
  *
- * <p>One home for them because two tests probe the same pixels, and a radius
- * copied into both is a radius that goes stale in one.
+ * <p>One home for them because several tests probe the same pixels, and a radius
+ * copied into two of them is a radius that goes stale in one. That is also why
+ * the parts other packages need are public: a second home would be a second
+ * answer.
  */
-final class Artwork {
+public final class Artwork {
 
     /** The Face is 196dp square; the {@code xhdpi} qualifier makes that 392px. */
-    static final int INTRINSIC_PX = 392;
+    public static final int INTRINSIC_PX = 392;
 
     /**
      * Radii in pixels from the centre. The hour hand's artwork reaches 98px and
@@ -46,12 +48,12 @@ final class Artwork {
      * Every radius here is measured from the dial's centre, so probing from
      * anywhere else would mean restating the arithmetic at each call.
      */
-    static int probe(@NonNull Bitmap render, int dx, int dy) {
+    public static int probe(@NonNull Bitmap render, int dx, int dy) {
         return render.getPixel(render.getWidth() / 2 + dx, render.getHeight() / 2 + dy);
     }
 
     /** The hands are painted a near-black #141414. */
-    static boolean isHand(int pixel) {
+    public static boolean isHand(int pixel) {
         return Color.alpha(pixel) == 255 && Color.red(pixel) < 0x40;
     }
 
