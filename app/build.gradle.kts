@@ -26,6 +26,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // Robolectric needs the merged resources and the manifest to inflate
+    // drawables; without this the Face PNG resolves to null off-device.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     // The build refuses to regress. abortOnError is already the default, so
     // errors were never the gap - warnings were, and they exited 0 unread.
     // Anything a later candidate owns is suppressed at its site, naming the
@@ -67,4 +73,5 @@ dependencies {
     implementation(libs.androidx.annotation)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
 }
