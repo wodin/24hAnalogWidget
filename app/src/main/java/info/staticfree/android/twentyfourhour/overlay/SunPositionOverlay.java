@@ -34,8 +34,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.time.DateTimeException;
+import java.time.Instant;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.TimeZone;
 
 import info.staticfree.android.twentyfourhour.R;
@@ -120,11 +124,12 @@ public class SunPositionOverlay implements DialOverlay {
     }
 
     @Override
-    public void onDraw(@NonNull Canvas canvas, int cX, int cY, int w, int h,
-            @NonNull Calendar calendar, boolean sizeChanged) {
-        int insetW = (int) (w / 2.0f * scale);
-        int insetH = (int) (h / 2.0f * scale);
-        inset.set(cX - insetW, cY - insetH, cX + insetW, cY + insetH);
+    public void draw(@NonNull Canvas canvas, int side, @NonNull Instant instant,
+            @NonNull ZoneId zone) {
+        int centre = side / 2;
+        int insetRadius = (int) (side / 2.0f * scale);
+        inset.set(centre - insetRadius, centre - insetRadius, centre + insetRadius,
+                centre + insetRadius);
 
         if (location == null) {
             // not much we can do if we don't have a location
@@ -132,6 +137,11 @@ public class SunPositionOverlay implements DialOverlay {
 
             return;
         }
+
+        // jsuntimes takes a Calendar and a TimeZone, so this is where the moment
+        // is converted back to one. The last Calendar in the module, and it goes
+        // when the library does.
+        Calendar calendar = GregorianCalendar.from(ZonedDateTime.ofInstant(instant, zone));
 
         TimeZone tz = calendar.getTimeZone();
 

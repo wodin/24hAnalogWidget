@@ -42,10 +42,7 @@ import androidx.annotation.NonNull;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Arrays;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
 
 import info.staticfree.android.twentyfourhour.R;
 import info.staticfree.android.twentyfourhour.overlay.DialOverlay;
@@ -158,17 +155,11 @@ public class Dial {
                 bounds.top + (bounds.height() - side) / 2f);
         canvas.scale(scale, scale);
 
-        int c = intrinsicSize / 2;
-        Calendar calendar = GregorianCalendar.from(ZonedDateTime.ofInstant(instant, zone));
-
         face.setBounds(0, 0, intrinsicSize, intrinsicSize);
         face.draw(canvas);
 
         for (DialOverlay overlay : overlays) {
-            // Always true: re-bounding three Drawables is unmeasurable beside
-            // the drawing itself, and caching it is what forced the old View to
-            // expose a lifecycle callback as public API.
-            overlay.onDraw(canvas, c, c, intrinsicSize, intrinsicSize, calendar, true);
+            overlay.draw(canvas, intrinsicSize, instant, zone);
         }
 
         canvas.restore();
