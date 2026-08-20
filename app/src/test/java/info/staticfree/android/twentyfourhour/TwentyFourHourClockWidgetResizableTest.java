@@ -13,6 +13,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
+import android.os.Bundle;
 import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
@@ -238,6 +239,74 @@ public class TwentyFourHourClockWidgetResizableTest {
     }
 
     /**
+     * The picture a widget is given is drawn for <em>that widget's</em> cell:
+     * the receiver asks the host what it has reported for the id it is about to
+     * update, rather than drawing one size for all of them. Which square a cell
+     * implies is {@code WidgetPicture}'s rule and its test; what is claimed here
+     * is only that the cell reaches it.
+     *
+     * <p>250dp is used because 500px is nothing else — not the artwork's own
+     * size, which is what an ignored bundle would produce, and not the display's
+     * smaller dimension, which is what a cap misapplied would.
+     *
+     * <p>The pinned picture is read after the resize and not before it, because
+     * the host's own {@code updateAppWidgetOptions} redraws the widget on the
+     * way past. Comparing against that redraw rather than against pinning is
+     * what keeps the last assertion from passing on a picture this update did
+     * not put there.
+     */
+    @Test
+    public void aWidgetIsDrawnForTheCellTheHostReportsForIt() {
+        int widgetId = pinWidget();
+        appWidgetManager().updateAppWidgetOptions(widgetId, cell(250));
+        Bitmap beforeTheUpdate = bitmapShownOn(widgetId);
+
+        deliver(update(widgetId));
+
+        assertNotSame("the update should have redrawn the widget", beforeTheUpdate,
+                bitmapShownOn(widgetId));
+        assertEquals("the widget should be drawn for its own 250dp cell", 500,
+                bitmapShownOn(widgetId).getWidth());
+    }
+
+    /**
+     * Resizing a widget redraws it. Without this the host keeps showing the
+     * bitmap it was last given, stretched to the new cell — which is exactly the
+     * blur that sizing from the cell was meant to remove.
+     *
+     * <p>The new size comes from the broadcast rather than from the host: the
+     * framework puts the fresh bundle in the intent, and reading it back from
+     * {@code AppWidgetManager} would be asking a second source about something
+     * the first one just said.
+     */
+    @Test
+    public void resizingAWidgetRedrawsItAtItsNewSize() {
+        int widgetId = pinWidget();
+        Bitmap beforeTheResize = bitmapShownOn(widgetId);
+
+        deliver(resize(widgetId, cell(250)));
+
+        assertNotSame("the resize should have redrawn the widget", beforeTheResize,
+                bitmapShownOn(widgetId));
+        assertEquals("the widget should be redrawn for its new 250dp cell", 500,
+                bitmapShownOn(widgetId).getWidth());
+    }
+
+    /**
+     * And re-arms the tick while it is there, so that <em>every path that
+     * redraws the widget schedules the next redraw</em> has no exception to
+     * remember. Why that is worth a line it will never need,
+     * {@code onAppWidgetOptionsChanged} explains.
+     */
+    @Test
+    public void resizingAWidgetArmsTheTick() {
+        deliver(resize(pinWidget(), cell(250)));
+
+        assertEquals("resizing a widget should leave exactly one alarm", 1,
+                scheduledAlarms().size());
+    }
+
+    /**
      * Registers a widget with the host, as pinning one from the picker would,
      * and leaves nothing of its own behind.
      *
@@ -262,6 +331,29 @@ public class TwentyFourHourClockWidgetResizableTest {
         }
 
         return widgetId;
+    }
+
+    /**
+     * A square cell of the given side in dp, which is all four of the numbers a
+     * host reports about one. Real cells are not square and the difference is
+     * what {@code WidgetPictureTest} is about; here the cell only has to be
+     * recognisable in the render.
+     */
+    @NonNull
+    private static Bundle cell(int sideDp) {
+        Bundle options = new Bundle();
+        options.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, sideDp);
+        options.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, sideDp);
+        options.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, sideDp);
+        options.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, sideDp);
+        return options;
+    }
+
+    @NonNull
+    private static Intent resize(int widgetId, @NonNull Bundle options) {
+        return new Intent(AppWidgetManager.ACTION_APPWIDGET_OPTIONS_CHANGED)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_OPTIONS, options);
     }
 
     @NonNull

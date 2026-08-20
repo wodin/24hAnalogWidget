@@ -22,6 +22,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 
 import java.util.Calendar;
 
@@ -88,8 +89,38 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
         startTicking(context);
 
         for (int appWidgetId : appWidgetIds) {
-            appWidgetManager.updateAppWidget(appWidgetId, WidgetPicture.build(context));
+            appWidgetManager.updateAppWidget(appWidgetId,
+                    WidgetPicture.build(context, appWidgetManager.getAppWidgetOptions(appWidgetId)));
         }
+    }
+
+    /**
+     * Redraws the one widget the user resized, for the cell it now occupies.
+     *
+     * <p>Without this the host keeps showing the picture it was last given,
+     * scaled to the new cell — a dial that grows blurred as it grows. The host
+     * does not follow a resize with an update, so this is the only notice there
+     * is.
+     *
+     * <p>The new cell is read from {@code newOptions} rather than from
+     * {@code appWidgetManager}: the framework hands over the fresh bundle, and
+     * asking the manager would be putting a second source between this and
+     * something the first one has just said.
+     *
+     * <p>Arms the tick as well, for the reason {@link #onUpdate} gives. A resize
+     * cannot in practice be the first thing a widget receives, so this buys no
+     * case an update does not already cover — it is here so that <em>every path
+     * that redraws the widget schedules the next redraw</em> holds without an
+     * exception a reader would have to check.
+     */
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager appWidgetManager,
+            int appWidgetId, Bundle newOptions) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions);
+
+        startTicking(context);
+
+        appWidgetManager.updateAppWidget(appWidgetId, WidgetPicture.build(context, newOptions));
     }
 
     /**

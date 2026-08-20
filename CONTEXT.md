@@ -62,3 +62,11 @@ An instance of the clock living on the homescreen. A still picture redrawn on a
 schedule rather than a live view, so it cannot animate, and the only gesture it
 accepts is a single tap.
 _Avoid_: applet, tile, gadget
+
+**Cell**:
+The patch of homescreen the host has given one widget, and the only thing that
+decides how large its picture is drawn. The host describes it as two rectangles
+in one breath — the cell in portrait and the same cell in landscape — so a cell
+is not one width and one height. Each widget has its own, which is why a picture
+answers to one widget rather than to all of them.
+_Avoid_: size, bounds, tile, slot

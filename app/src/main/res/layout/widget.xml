@@ -1,7 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?><!--
+    The dial fills the cell and the bitmap is scaled to fit it, so the bitmap's
+    size is a resolution rather than a size: too small is soft, never clipped.
+    Sized by the bitmap instead, as this was, the cell cropped whatever did not
+    fit. The Face stays as the src so that a widget the host has laid out but
+    not yet updated shows the dial's artwork rather than a blank cell.
+-->
 <ImageView xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/clock"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:scaleType="fitCenter"
     android:src="@drawable/clock_face"
     android:contentDescription="@string/app_name" />

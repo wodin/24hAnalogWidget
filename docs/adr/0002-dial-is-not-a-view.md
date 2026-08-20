@@ -65,6 +65,16 @@ into. What the receiver's ignorance of the cell does cost is resolution: the
 host had the cell as 130×220dp and was never asked, so the dial is drawn at
 539px to be shown at 342px.
 
+That last cost has since been paid, in candidate E's S5: the picture now reads
+the host's options and sizes its bitmap from the cell, with `getIntrinsicSize()`
+kept only as the fallback for a widget the host has never sized. The layout went
+to `match_parent` with `fitCenter` in the same change, which is what makes the
+paragraph above hold in general rather than by luck — the dial fills the cell
+whatever the bitmap measures, so the bitmap's size became purely a question of
+resolution, which is what this decision said it should be. The 43%-of-its-own-
+bitmap and 148px→342px figures stand as the measurements they were; "the
+widget's bitmap is `getIntrinsicSize()` square" does not.
+
 Rendering became testable off-device, which it had never been. Robolectric with
 native graphics draws real pixels on the JVM, and the tests probe them at fixed
 instants — a pixel on the hour hand's axis at one time, bare Face at another.

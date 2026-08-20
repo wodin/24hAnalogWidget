@@ -16,10 +16,14 @@ package info.staticfree.android.twentyfourhour.widget;
  */
 
 import android.app.PendingIntent;
+import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Rect;
+import android.os.Bundle;
+import android.util.DisplayMetrics;
+import android.util.TypedValue;
 import android.widget.RemoteViews;
 
 import androidx.annotation.NonNull;
@@ -36,12 +40,11 @@ import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
  * What one widget shows: a dial drawn at this moment, and the tap that opens the
  * device's clock app.
  *
- * <p>The unit is one widget rather than all of them. Two widgets on a homescreen
- * are two cells of their own sizes, so a picture built once and shown on every
- * id is only correct while they happen to match. Nothing here enforces that —
- * a caller is free to build one and set it on twenty — but building per widget
- * is what a caller has to do anyway once the cell decides what is drawn, and
- * this is the signature that lets it.
+ * <p>The unit is one widget rather than all of them, because the cell is what
+ * decides the picture and each widget has a cell of its own. Nothing here
+ * enforces it — a caller is free to build one picture and set it on twenty —
+ * but the result would be every widget drawn for whichever one's cell was asked
+ * about.
  *
  * <p>Nothing is kept between calls. A {@link Dial} has no lifecycle to reuse,
  * and a {@link Bitmap} handed to the host is the host's; caching either would be
@@ -52,11 +55,15 @@ public final class WidgetPicture {
     /**
      * Assembles the picture for one widget.
      *
-     * @param context any context in this app; the drawables and the package name are read from it
+     * @param context any context in this app; the drawables, the display and the package name are
+     *         read from it
+     * @param options the host's description of this widget's cell, as
+     *         {@link AppWidgetManager#getAppWidgetOptions} returns it. Empty is allowed and means
+     *         the host has not sized this widget
      * @return {@link RemoteViews} the host can show, complete rather than a patch on an earlier one
      */
     @NonNull
-    public static RemoteViews build(@NonNull Context context) {
+    public static RemoteViews build(@NonNull Context context, @NonNull Bundle options) {
         final RemoteViews picture = new RemoteViews(context.getPackageName(), R.layout.widget);
 
         // Every picture is a whole one, so the tap is attached every time rather
@@ -69,7 +76,7 @@ public final class WidgetPicture {
             picture.setOnClickPendingIntent(R.id.clock, tap);
         }
 
-        picture.setImageViewBitmap(R.id.clock, render(context));
+        picture.setImageViewBitmap(R.id.clock, render(context, options));
 
         return picture;
     }
@@ -77,17 +84,15 @@ public final class WidgetPicture {
     /**
      * Draws the dial into a bitmap the host can show.
      *
-     * <p>The bitmap is the dial's intrinsic size, which is the artwork's own, so
-     * the dial is drawn at the resolution it was painted for. The dial fills
-     * whatever bounds it is given, so a larger bitmap would not be a larger
-     * dial, only the same art upscaled. What size the widget's cell actually is,
-     * this does not ask — so a cell larger than the artwork shows it upscaled,
-     * and a smaller one shows detail that was drawn and then thrown away.
+     * <p>The bitmap is a <em>resolution</em>, not a size: the layout gives the
+     * dial the whole cell and scales the bitmap to fit it, so this decides only
+     * how much detail there is to scale. Too small and the dial is soft; too
+     * large and pixels were painted to be thrown away.
      */
     @NonNull
-    private static Bitmap render(@NonNull Context context) {
+    private static Bitmap render(@NonNull Context context, @NonNull Bundle options) {
         final Dial dial = Dial.createStandard(context, new SunPositionOverlay(context));
-        final int size = dial.getIntrinsicSize();
+        final int size = sideForCell(context, options, dial.getIntrinsicSize());
 
         final Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
 
@@ -95,6 +100,48 @@ public final class WidgetPicture {
                 ZoneId.systemDefault());
 
         return bitmap;
+    }
+
+    /**
+     * The side, in pixels, of the square to draw for a widget in this cell.
+     *
+     * <p>The host describes one cell with four numbers, which pair up into two
+     * rectangles rather than into a range: {@code MIN_WIDTH}×{@code MAX_HEIGHT}
+     * is the cell in portrait and {@code MAX_WIDTH}×{@code MIN_HEIGHT} the same
+     * cell in landscape. A dial is square, so each rectangle asks for the
+     * largest square inside it, and this takes the larger of the two — one
+     * bitmap has to answer for both, because all four numbers arrive in one
+     * bundle and rotating the device fires no options change at all. The larger
+     * is the safe one: downscaling it in the other orientation costs nothing,
+     * where upscaling the smaller costs sharpness.
+     *
+     * <p>Capped at the display's smaller dimension. The host refuses a
+     * {@link RemoteViews} whose bitmaps exceed a budget that scales with the
+     * display, and a cell measured on this display cannot on its own approach
+     * that — so the cap never binds in practice, and exists so that a bundle
+     * which is somehow wrong costs a soft dial rather than a widget the host
+     * drops.
+     *
+     * @param fallbackPx used when the bundle describes no cell, which is what a host that has
+     *         never sized this widget sends. Some resolution has to be chosen and the artwork's
+     *         own is the only one that is not a guess
+     */
+    private static int sideForCell(@NonNull Context context, @NonNull Bundle options, int fallbackPx) {
+        final int portraitDp = Math.min(options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH),
+                options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT));
+        final int landscapeDp = Math.min(options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH),
+                options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT));
+        final int sideDp = Math.max(portraitDp, landscapeDp);
+
+        if (sideDp <= 0) {
+            return fallbackPx;
+        }
+
+        final DisplayMetrics display = context.getResources().getDisplayMetrics();
+        final int sidePx = Math.round(
+                TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, sideDp, display));
+
+        return Math.min(sidePx, Math.min(display.widthPixels, display.heightPixels));
     }
 
     private WidgetPicture() {
