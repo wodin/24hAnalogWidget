@@ -54,10 +54,10 @@ import info.staticfree.android.twentyfourhour.overlay.HandsOverlay;
  * The 24-hour dial: a Face with overlays drawn over it, painted onto whatever
  * canvas you hand it at whatever moment you name.
  *
- * <p>A Dial is not a {@link android.view.View} and has no lifecycle, so building
- * one per widget update costs nothing. The time is a parameter of {@link #draw}
- * rather than a field, which is what lets the same Dial be drawn at one instant
- * and then at another without anything in between going stale.
+ * <p>A Dial is not a {@link android.view.View} and has no lifecycle, so one
+ * built per widget update has nothing to tear down. The time is a parameter of
+ * {@link #draw} rather than a field, which is what lets the same Dial be drawn
+ * at one instant and then at another without anything in between going stale.
  *
  * <p>Immutable, but not thread-safe: the overlays it draws through keep scratch
  * state and move their Drawables' bounds, so draws must not overlap.
