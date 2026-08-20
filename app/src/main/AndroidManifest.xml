@@ -28,7 +28,6 @@
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
-        android:name="info.staticfree.android.twentyfourhour.AnalogClockApplication"
         android:label="@string/app_name" >
         <activity
             android:name="WidgetDemo"
@@ -51,42 +50,6 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_resizable" />
-
-            <intent-filter>
-                <action android:name="info.staticfree.android.twentyfourhour.ACTION_CLOCK_UPDATE" />
-                <action android:name="android.intent.action.TIME_CHANGED" />
-                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
-            </intent-filter>
-        </receiver>
-        <receiver
-            android:name="TwentyFourHourClockWidget"
-            android:exported="true"
-            android:label="@string/widget_name_2x" >
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget" />
-
-            <intent-filter>
-                <action android:name="info.staticfree.android.twentyfourhour.ACTION_CLOCK_UPDATE" />
-                <action android:name="android.intent.action.TIME_CHANGED" />
-                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
-            </intent-filter>
-        </receiver>
-        <receiver
-            android:name="TwentyFourHourClockWidget3x"
-            android:exported="true"
-            android:label="@string/widget_name_3x" >
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_3x" />
 
             <intent-filter>
                 <action android:name="info.staticfree.android.twentyfourhour.ACTION_CLOCK_UPDATE" />

@@ -39,7 +39,7 @@ import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
 public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
 
     /**
-     * Sending this broadcast intent will cause the clock widgets to update.
+     * Sending this broadcast intent will cause the clock widget to update.
      */
     public static String ACTION_CLOCK_UPDATE = "info.staticfree.android.twentyfourhour.ACTION_CLOCK_UPDATE";
 
