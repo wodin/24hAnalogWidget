@@ -68,9 +68,12 @@ public class Dial {
 
     private static final float DEGREES_PER_TURN = 360;
 
-    /** One turn per day: 15 degrees an hour, so a quarter degree a minute. */
-    private static final float DEGREES_PER_HOUR = DEGREES_PER_TURN / 24;
-    private static final float DEGREES_PER_MINUTE = DEGREES_PER_HOUR / 60;
+    /**
+     * One turn per day, so this is what a turn is divided by: 15 degrees an
+     * hour, a quarter degree a minute, a two-hundred-and-fortieth of a degree a
+     * second.
+     */
+    private static final float SECONDS_PER_DAY = 24 * 60 * 60;
 
     /** Midnight sits at the bottom, which is what makes noon the top. */
     private static final float MIDNIGHT_ANGLE = DEGREES_PER_TURN / 2;
@@ -114,12 +117,17 @@ public class Dial {
      * midnight straight down — the inverse of a 12-hour clock.
      *
      * <p>Static and pure: an overlay needs the mapping, not the Dial that owns
-     * it. Resolved to the minute — any seconds are truncated, not rounded,
-     * because the dial has no second hand.
+     * it.
+     *
+     * <p>Resolved to the second, which is as fine as the time it is handed.
+     * The dial has no second hand, but the sun does not rise on a whole minute:
+     * truncating here would stand a twilight edge up to a quarter degree early,
+     * and the caller that does want whole minutes — the hands — truncates the
+     * time itself rather than relying on this to do it.
      */
     public static float angleFor(@NonNull LocalTime time) {
-        return (MIDNIGHT_ANGLE + time.getHour() * DEGREES_PER_HOUR +
-                time.getMinute() * DEGREES_PER_MINUTE) % DEGREES_PER_TURN;
+        return (MIDNIGHT_ANGLE + time.toSecondOfDay() * DEGREES_PER_TURN / SECONDS_PER_DAY) %
+                DEGREES_PER_TURN;
     }
 
     /**

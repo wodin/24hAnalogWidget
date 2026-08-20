@@ -33,35 +33,33 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.time.DateTimeException;
 import java.time.Instant;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-import java.util.TimeZone;
 
 import info.staticfree.android.twentyfourhour.R;
 import info.staticfree.android.twentyfourhour.dial.Dial;
-import uk.me.jstott.coordconv.LatitudeLongitude;
-import uk.me.jstott.sun.Sun;
-import uk.me.jstott.sun.Time;
+import info.staticfree.android.twentyfourhour.sun.SunPath;
 
-import static uk.me.jstott.sun.Sun.eveningAstronomicalTwilightTime;
-import static uk.me.jstott.sun.Sun.eveningCivilTwilightTime;
-import static uk.me.jstott.sun.Sun.eveningNauticalTwilightTime;
-import static uk.me.jstott.sun.Sun.morningAstronomicalTwilightTime;
-import static uk.me.jstott.sun.Sun.morningCivilTwilightTime;
-import static uk.me.jstott.sun.Sun.morningNauticalTwilightTime;
-
+/**
+ * The Sun position, drawn as shading over the hours the sun is down. A painter:
+ * it asks a {@link SunPath} what the sun does and the {@link Dial} where each
+ * moment falls, and works out neither itself. The only arithmetic left here is
+ * turning a dial angle into the frame {@link Canvas#drawArc} measures in, which
+ * is a fact about the drawing primitive rather than about the dial.
+ */
 public class SunPositionOverlay implements DialOverlay {
     private static final String TAG = SunPositionOverlay.class.getSimpleName();
     private static final float HIGH_NOON_ARC_ANGLE = 2;
     private static final float DEGREE_CIRCLE = 360;
 
+    /**
+     * A dial angle is measured clockwise from straight up; {@link Canvas#drawArc}
+     * measures clockwise from due east. Three quarters of a turn between them.
+     */
+    private static final float UP_TO_EAST = 270;
+
     private final RectF inset = new RectF();
-    private final LatitudeLongitude latLon = new LatitudeLongitude(0, 0);
 
     @Nullable
     private Location location;
@@ -107,16 +105,10 @@ public class SunPositionOverlay implements DialOverlay {
 
     public void setLocation(@Nullable Location location) {
         this.location = location;
-
-        if (location != null) {
-            latLon.setLatitude(location.getLatitude());
-            latLon.setLongitude(location.getLongitude());
-        }
     }
 
-    private float getHourArcAngle(@NonNull Time time) {
-        return (Dial.angleFor(LocalTime.of(time.getHours(), time.getMinutes())) + 270) %
-                DEGREE_CIRCLE;
+    private static float arcAngleFor(@NonNull ZonedDateTime moment) {
+        return (Dial.angleFor(moment.toLocalTime()) + UP_TO_EAST) % DEGREE_CIRCLE;
     }
 
     private void drawPlaceholder(@NonNull Canvas canvas) {
@@ -132,61 +124,41 @@ public class SunPositionOverlay implements DialOverlay {
                 centre + insetRadius);
 
         if (location == null) {
-            // not much we can do if we don't have a location
+            // Not an error, and the Placeholder says so: the sun position is
+            // unknown rather than absent.
             drawPlaceholder(canvas);
 
             return;
         }
 
-        // jsuntimes takes a Calendar and a TimeZone, so this is where the moment
-        // is converted back to one. The last Calendar in the module, and it goes
-        // when the library does.
-        Calendar calendar = GregorianCalendar.from(ZonedDateTime.ofInstant(instant, zone));
+        SunPath path = SunPath.on(location.getLatitude(), location.getLongitude(), instant, zone);
 
-        TimeZone tz = calendar.getTimeZone();
-
-        boolean dst = calendar.get(Calendar.DST_OFFSET) != 0;
-
-        try {
-            float morningSunAngle = getHourArcAngle(Sun.sunriseTime(calendar, latLon, tz, dst));
-
-            float eveningSunAngle = getHourArcAngle(Sun.sunsetTime(calendar, latLon, tz, dst));
-
-            float highNoon = (DEGREE_CIRCLE + morningSunAngle +
-                    ((DEGREE_CIRCLE + (eveningSunAngle - morningSunAngle)) % DEGREE_CIRCLE) / 2) %
-                    DEGREE_CIRCLE;
-
-            drawInsetArc(canvas, eveningSunAngle, morningSunAngle, OVERLAY_SUNSET);
-
-            if (showTwilight) {
-                drawInsetArc(canvas,
-                        getHourArcAngle(eveningCivilTwilightTime(calendar, latLon, tz, dst)),
-                        getHourArcAngle(morningCivilTwilightTime(calendar, latLon, tz, dst)),
-                        OVERLAY_SUNSET);
-                drawInsetArc(canvas,
-                        getHourArcAngle(eveningNauticalTwilightTime(calendar, latLon, tz, dst)),
-                        getHourArcAngle(morningNauticalTwilightTime(calendar, latLon, tz, dst)),
-                        OVERLAY_SUNSET);
-                drawInsetArc(canvas,
-                        getHourArcAngle(eveningAstronomicalTwilightTime(calendar, latLon, tz, dst)),
-                        getHourArcAngle(morningAstronomicalTwilightTime(calendar, latLon, tz, dst)),
-                        OVERLAY_SUNSET);
-            }
-
-            if (showHighNoon) {
-                if (Math.abs(eveningSunAngle - morningSunAngle) > 0) {
-                    canvas.drawArc(inset, highNoon - HIGH_NOON_ARC_ANGLE / 2, HIGH_NOON_ARC_ANGLE,
-                            true, OVERLAY_SUN);
-                }
-            }
-
-            // this can happen when lat/lon and the timezone are out of sync, causing impossible
-            // sunrise/sunset times to be calculated. Sun reports those by throwing; a Time it
-            // does return, but out of range, fails later in LocalTime.of. Same cause, same
-            // answer.
-        } catch (IllegalArgumentException | DateTimeException e) {
-            Log.e(TAG, "Error computing sunrise / sunset time", e);
+        if (path == null) {
+            Log.w(TAG, "no sun path at " + location + "; drawing the placeholder instead");
             drawPlaceholder(canvas);
+
+            return;
+        }
+
+        float morningSunAngle = arcAngleFor(path.sunrise());
+        float eveningSunAngle = arcAngleFor(path.sunset());
+
+        drawInsetArc(canvas, eveningSunAngle, morningSunAngle, OVERLAY_SUNSET);
+
+        if (showTwilight) {
+            drawInsetArc(canvas, arcAngleFor(path.eveningCivilTwilight()),
+                    arcAngleFor(path.morningCivilTwilight()), OVERLAY_SUNSET);
+            drawInsetArc(canvas, arcAngleFor(path.eveningNauticalTwilight()),
+                    arcAngleFor(path.morningNauticalTwilight()), OVERLAY_SUNSET);
+            drawInsetArc(canvas, arcAngleFor(path.eveningAstronomicalTwilight()),
+                    arcAngleFor(path.morningAstronomicalTwilight()), OVERLAY_SUNSET);
+        }
+
+        if (showHighNoon && Math.abs(eveningSunAngle - morningSunAngle) > 0) {
+            float highNoon = arcAngleFor(path.highNoon());
+
+            canvas.drawArc(inset, highNoon - HIGH_NOON_ARC_ANGLE / 2, HIGH_NOON_ARC_ANGLE, true,
+                    OVERLAY_SUN);
         }
     }
 

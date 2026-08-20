@@ -48,4 +48,15 @@ public class DialAngleTest {
     public void theAngleDriftsAQuarterDegreePerMinute() {
         assertEquals(7.5f, Dial.angleFor(LocalTime.of(12, 30)), TOLERANCE);
     }
+
+    /**
+     * A quarter degree a minute is a two-hundred-and-fortieth of a degree a
+     * second. The dial has no second hand, but a sunrise does not land on a
+     * whole minute, and without this case the mapping could truncate to the
+     * minute with every test above still passing.
+     */
+    @Test
+    public void theAngleDriftsATwoHundredAndFortiethOfADegreePerSecond() {
+        assertEquals(7.5f + 1f / 240, Dial.angleFor(LocalTime.of(12, 30, 1)), TOLERANCE);
+    }
 }
