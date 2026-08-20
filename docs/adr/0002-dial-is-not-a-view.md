@@ -59,8 +59,11 @@ after, in the same pinned 2×2 cell 360px wide, the dial went from 148px across
 to 342px. The 5% of the width it still does not cover is the margin the artwork
 carries around itself — its painted circle ends at 187px of its 196dp. That is
 width only: the cell was 360×606 and a dial is square, so nearly half its
-height stays empty. Filling that means knowing how large the cell is, which the
-receiver has no way to ask here.
+height stays empty. No sizing decision closes that — a round dial in a cell
+taller than it is wide leaves the difference empty whatever bitmap it is drawn
+into. What the receiver's ignorance of the cell does cost is resolution: the
+host had the cell as 130×220dp and was never asked, so the dial is drawn at
+539px to be shown at 342px.
 
 Rendering became testable off-device, which it had never been. Robolectric with
 native graphics draws real pixels on the JVM, and the tests probe them at fixed
