@@ -51,8 +51,24 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_resizable" />
 
+            <!--
+                The wall clock being set, and the timezone changing: both redraw
+                the dial at once rather than leaving it wrong until the next tick.
+                Both are on the exemption list for implicit broadcasts to manifest
+                receivers, and both are protected, so only the system can send
+                them.
+
+                The tick has no entry here and needs none: it names this receiver
+                by component, and an explicit intent is delivered without a
+                filter. It used to have one, which published "redraw now" as
+                something any app could send without knowing what it was talking
+                to. Note what this does not buy: the receiver is exported because
+                the widget host is another process, so an app that names the
+                component can still trigger a redraw. Only the implicit path is
+                closed - and a forced redraw draws the current time, which is
+                what the widget was going to show anyway.
+            -->
             <intent-filter>
-                <action android:name="info.staticfree.android.twentyfourhour.ACTION_CLOCK_UPDATE" />
                 <action android:name="android.intent.action.TIME_CHANGED" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>

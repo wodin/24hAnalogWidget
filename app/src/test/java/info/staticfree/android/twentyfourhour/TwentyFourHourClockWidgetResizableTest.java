@@ -1,13 +1,14 @@
 package info.staticfree.android.twentyfourhour;
 
+import static info.staticfree.android.twentyfourhour.widget.Alarms.only;
+import static info.staticfree.android.twentyfourhour.widget.Alarms.operationOf;
+import static info.staticfree.android.twentyfourhour.widget.Alarms.scheduled;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
 
 import android.app.AlarmManager;
-import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.content.Intent;
@@ -25,38 +26,22 @@ import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
 import org.robolectric.shadows.ShadowAlarmManager;
-import org.robolectric.shadows.ShadowPendingIntent;
 
-import java.util.List;
+import info.staticfree.android.twentyfourhour.widget.Tick;
 
 /**
- * A net over the widget receiver: deliver it the broadcasts the framework
- * delivers, then read back the two things it produces — the alarm it schedules
- * and the picture it hands the host.
+ * The receiver is wiring, and wiring is what this asks about: that each
+ * broadcast the framework delivers reaches the thing that answers it, and that
+ * what comes back reaches the host.
  *
- * <p>Part of it is a <em>characterisation</em> net, asserting what the receiver
- * does today precisely so that changing it is deliberate: the alarm carries a
- * repeat interval rather than being armed a minute at a time, and its intent
- * names no receiver. Both are wrong, both are about to be fixed, and each should
- * fail loudly when it is — a flip visible in a diff rather than inferred from a
- * green suite.
- *
- * <p>The rest pins what must <em>survive</em> that work: a wall-clock alarm that
- * does not wake the device, anchored to the top of a minute, carried by an
- * immutable {@link PendingIntent}, cancelled when the last widget goes, and a
- * picture that reaches every widget the update names. A net woven only from the
- * parts due to change would let the parts not due to change break in silence.
- *
- * <p>What the picture <em>is</em> — its bitmap's size, the tap on it — belongs
- * to {@code WidgetPictureTest}, which needs no broadcast to ask. Left here is
- * the wiring: that a picture is built per id and reaches the host.
- *
- * <p>What it cannot say: that a {@code PendingIntent} declaring neither
- * mutability flag is fatal. Robolectric's {@code ShadowPendingIntent} does not
- * enforce the API 31 rule that one of {@code FLAG_IMMUTABLE} or
- * {@code FLAG_MUTABLE} must be given, so the flag is readable here but the crash
- * its absence causes on a device is not reproducible. That one needs an
- * emulator.
+ * <p>Neither of the two things it wires is examined here. What a tick <em>is</em>
+ * — its type, its anchor, the {@code PendingIntent} that carries it — belongs to
+ * {@code TickTest}; what a picture <em>is</em> — its bitmap's size, the tap on
+ * it — belongs to {@code WidgetPictureTest}. Both answer without a broadcast.
+ * Left here is only what needs one: that an update arms a tick and draws every
+ * id it names, that a resize redraws the one it names, that the last widget
+ * leaving stops the clock, and that the tick's own broadcast comes back round to
+ * a redraw.
  *
  * <p>A fresh receiver per delivery, deliberately: Android constructs one for
  * each broadcast and discards it afterwards, so a receiver that remembered
@@ -66,9 +51,6 @@ import java.util.List;
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "xhdpi")
 public class TwentyFourHourClockWidgetResizableTest {
-
-    /** A minute, in milliseconds: the repeat the receiver asks for today. */
-    private static final long MINUTE_MS = 60_000;
 
     /**
      * The tick is armed by an update rather than by {@code onEnabled}, so that
@@ -92,105 +74,65 @@ public class TwentyFourHourClockWidgetResizableTest {
         deliver(update(pinWidget()));
 
         assertEquals("updating a widget should leave exactly one alarm", 1,
-                scheduledAlarms().size());
+                scheduled(context()).size());
     }
 
     /**
-     * Arming on every update is only safe if arming twice leaves one alarm — and
-     * a widget is updated far more often than it is enabled, so this is the risk
-     * the move creates. It holds by identity rather than by any flag: both
-     * {@code PendingIntent}s are built with the same request code and an intent
-     * equal under {@link Intent#filterEquals}, so they are the same one, and
-     * {@link AlarmManager} replaces the outstanding alarm rather than adding to
-     * it.
-     */
-    @Test
-    public void armingTheTickAgainReplacesItRatherThanAddingOne() {
-        int widgetId = pinWidget();
-
-        deliver(update(widgetId));
-        deliver(update(widgetId));
-
-        assertEquals("a second update should leave one alarm, not two", 1,
-                scheduledAlarms().size());
-    }
-
-    /**
-     * {@code RTC} rather than {@code RTC_WAKEUP}: the tick is not worth waking
-     * the device for, and that much should survive. The minutely
-     * {@code interval} should not — a repeat re-uses the anchor it was given, so
-     * it keeps whatever lateness the OS added to the first period instead of
-     * correcting for it.
-     */
-    @Test
-    public void theTickRepeatsEveryMinuteOnTheWallClockWithoutWakingTheDevice() {
-        deliver(update(pinWidget()));
-
-        assertEquals("the tick should follow the wall clock and not wake the device",
-                AlarmManager.RTC, onlyAlarm().getType());
-        assertEquals("the tick should repeat every minute", MINUTE_MS,
-                onlyAlarm().getIntervalMs());
-    }
-
-    /**
-     * Read against the clock rather than against a fixed instant: the receiver
-     * anchors to the top of the next minute, and a whole minute is what both
-     * halves of that claim need. Every real timezone is a whole number of
-     * minutes from UTC, so "the top of a minute" is the same instant in any of
-     * them.
+     * The round trip: the tick the schedule sends is the tick the receiver
+     * recognises. Both halves are {@code Tick}'s and neither is visible from
+     * outside it, so nothing but delivering its own intent can show that they
+     * meet — and if they ever stopped meeting, the clock would freeze with an
+     * alarm still faithfully firing behind it.
      *
-     * <p>Bracketed by two readings of the clock because the receiver takes its
-     * own somewhere between them. Comparing the upper bound against {@code
-     * before} instead would fail whenever a minute turned over mid-delivery.
+     * <p>The intent is taken from the alarm rather than assembled here, which is
+     * the whole point: an intent built by the test would only prove the test and
+     * {@code isTick} agree.
      */
     @Test
-    public void theTickIsAnchoredAtTheTopOfTheNextMinute() {
+    public void theTickRedrawsEveryWidget() {
+        int first = pinWidget();
+        int second = pinWidget();
+        Tick.schedule(context());
+        Bitmap firstBeforeTheTick = bitmapShownOn(first);
+        Bitmap secondBeforeTheTick = bitmapShownOn(second);
+
+        deliver(operationOf(only(context())).getSavedIntent());
+
+        assertNotSame("the tick should have redrawn the first widget", firstBeforeTheTick,
+                bitmapShownOn(first));
+        assertNotSame("the tick should have redrawn the second widget", secondBeforeTheTick,
+                bitmapShownOn(second));
+    }
+
+    /**
+     * A dial left wrong until the next minute turns over looks broken for up to
+     * a minute, so a wall clock the user has just moved redraws at once rather
+     * than waiting for the tick. Both ways of moving it count: setting the time
+     * and changing the zone displace the hands by the same kind of jump, and
+     * the manifest filter lists both.
+     *
+     * <p>Declared in the manifest because the app has no process of its own to
+     * register a receiver from, and exempted from the ban on implicit broadcasts
+     * to manifest receivers — which is why these two, unlike the tick, may still
+     * arrive without naming anybody.
+     *
+     * <p>Asserted one at a time against a reading taken just before each, or the
+     * second delivery would be credited with a redraw the first had already
+     * made.
+     */
+    @Test
+    public void movingTheWallClockRedrawsEveryWidget() {
         int widgetId = pinWidget();
 
-        long before = System.currentTimeMillis();
-        deliver(update(widgetId));
-        long after = System.currentTimeMillis();
+        Bitmap beforeTheTimeChange = bitmapShownOn(widgetId);
+        deliver(new Intent(Intent.ACTION_TIME_CHANGED));
+        assertNotSame("a time change should have redrawn the widget", beforeTheTimeChange,
+                bitmapShownOn(widgetId));
 
-        long triggerAt = onlyAlarm().getTriggerAtMs();
-
-        assertEquals("the tick should fall on a minute boundary", 0, triggerAt % MINUTE_MS);
-        assertTrue("the tick should be in the future", triggerAt > before);
-        assertTrue("the tick should be no more than a minute away",
-                triggerAt <= after + MINUTE_MS);
-    }
-
-    /**
-     * The intent names an action and nothing else. It arrives all the same,
-     * because the app is sending it to itself: <strong>measured</strong> on the
-     * API 34 emulator, the alarm redraws the widget every minute, while the same
-     * action broadcast from the shell reaches no receiver at all. Naming the
-     * receiver is still the fix — it stops the tick depending on an exemption to
-     * the API 26 rule against implicit broadcasts to manifest receivers — and it
-     * lands in a later slice.
-     */
-    @Test
-    public void theTickIntentNamesNoReceiver() {
-        deliver(update(pinWidget()));
-
-        Intent tick = tickPendingIntent().getSavedIntent();
-
-        assertEquals("the tick should carry the update action",
-                TwentyFourHourClockWidgetResizable.ACTION_CLOCK_UPDATE, tick.getAction());
-        assertNull("the tick should name no component today", tick.getComponent());
-        assertNull("the tick should name no package today", tick.getPackage());
-    }
-
-    /**
-     * Which of the two mutability flags, and why either is needed at all, is
-     * {@code createUpdate}'s to explain. What matters here is that the flag is
-     * the one thing about this the JVM can see at all.
-     */
-    @Test
-    public void theTicksPendingIntentIsImmutable() {
-        deliver(update(pinWidget()));
-
-        assertTrue("the tick's PendingIntent should be immutable",
-                tickPendingIntent().isImmutable());
+        Bitmap beforeTheZoneChange = bitmapShownOn(widgetId);
+        deliver(new Intent(Intent.ACTION_TIMEZONE_CHANGED));
+        assertNotSame("a timezone change should have redrawn the widget", beforeTheZoneChange,
+                bitmapShownOn(widgetId));
     }
 
     @Test
@@ -199,7 +141,7 @@ public class TwentyFourHourClockWidgetResizableTest {
         deliver(new Intent(AppWidgetManager.ACTION_APPWIDGET_DISABLED));
 
         assertTrue("disabling the widget should leave no alarm behind",
-                scheduledAlarms().isEmpty());
+                scheduled(context()).isEmpty());
     }
 
     /**
@@ -303,7 +245,7 @@ public class TwentyFourHourClockWidgetResizableTest {
         deliver(resize(pinWidget(), cell(250)));
 
         assertEquals("resizing a widget should leave exactly one alarm", 1,
-                scheduledAlarms().size());
+                scheduled(context()).size());
     }
 
     /**
@@ -365,29 +307,6 @@ public class TwentyFourHourClockWidgetResizableTest {
     /** One broadcast, to a receiver that has never seen another. */
     private static void deliver(@NonNull Intent intent) {
         new TwentyFourHourClockWidgetResizable().onReceive(context(), intent);
-    }
-
-    @NonNull
-    private static List<ShadowAlarmManager.ScheduledAlarm> scheduledAlarms() {
-        return shadowOf(context().getSystemService(AlarmManager.class)).getScheduledAlarms();
-    }
-
-    @NonNull
-    private static ShadowAlarmManager.ScheduledAlarm onlyAlarm() {
-        List<ShadowAlarmManager.ScheduledAlarm> alarms = scheduledAlarms();
-        assertEquals("expected exactly one scheduled alarm", 1, alarms.size());
-        return alarms.get(0);
-    }
-
-    /**
-     * The {@code PendingIntent} the alarm would send. Robolectric deprecated the
-     * field without putting an accessor in its place, so the one use of it lives
-     * here rather than at every call site.
-     */
-    @NonNull
-    @SuppressWarnings("deprecation")
-    private static ShadowPendingIntent tickPendingIntent() {
-        return shadowOf(onlyAlarm().operation);
     }
 
     /** The picture the host is showing, from the last {@code RemoteViews} it was sent. */
