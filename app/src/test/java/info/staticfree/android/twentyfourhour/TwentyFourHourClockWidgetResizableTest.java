@@ -4,7 +4,6 @@ import static info.staticfree.android.twentyfourhour.dial.Artwork.INTRINSIC_PX;
 import static info.staticfree.android.twentyfourhour.dial.Artwork.isHand;
 import static info.staticfree.android.twentyfourhour.dial.Artwork.probe;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
@@ -38,23 +37,23 @@ import java.util.List;
  *
  * <p>Part of it is a <em>characterisation</em> net, asserting what the receiver
  * does today precisely so that changing it is deliberate: the alarm repeats
- * rather than re-arming, its intent names no receiver, its {@link PendingIntent}
- * is mutable, and the bitmap is the artwork's own size whatever the host's cell
- * measures. All four are wrong, all four are about to be fixed, and each one
- * should fail loudly when it is — a flip visible in a diff rather than inferred
- * from a green suite.
+ * rather than re-arming, its intent names no receiver, and the bitmap is the
+ * artwork's own size whatever the host's cell measures. All three are wrong, all
+ * three are about to be fixed, and each one should fail loudly when it is — a
+ * flip visible in a diff rather than inferred from a green suite.
  *
  * <p>The rest pins what must <em>survive</em> that work: a wall-clock alarm that
- * does not wake the device, anchored to the top of a minute, cancelled when the
- * last widget goes, and a picture that reaches the host at all. A net woven only
- * from the parts due to change would let the parts not due to change break in
- * silence.
+ * does not wake the device, anchored to the top of a minute, carried by an
+ * immutable {@link PendingIntent}, cancelled when the last widget goes, and a
+ * picture that reaches the host at all. A net woven only from the parts due to
+ * change would let the parts not due to change break in silence.
  *
- * <p>What it cannot say: that the mutable {@code PendingIntent} is fatal.
- * Robolectric's {@code ShadowPendingIntent} does not enforce the API 31 rule
- * that one of {@code FLAG_IMMUTABLE} or {@code FLAG_MUTABLE} must be given, so
- * the flag is readable here but the crash it causes on a device is not
- * reproducible. That one needs an emulator.
+ * <p>What it cannot say: that a {@code PendingIntent} declaring neither
+ * mutability flag is fatal. Robolectric's {@code ShadowPendingIntent} does not
+ * enforce the API 31 rule that one of {@code FLAG_IMMUTABLE} or
+ * {@code FLAG_MUTABLE} must be given, so the flag is readable here but the crash
+ * its absence causes on a device is not reproducible. That one needs an
+ * emulator.
  *
  * <p>A fresh receiver per delivery, deliberately: Android constructs one for
  * each broadcast and discards it afterwards, so a receiver that remembered
@@ -137,16 +136,15 @@ public class TwentyFourHourClockWidgetResizableTest {
     }
 
     /**
-     * Neither {@code FLAG_IMMUTABLE} nor {@code FLAG_MUTABLE} is given, so the
-     * platform defaults to mutable — and from API 31 it refuses to build one at
-     * all. Robolectric does not enforce that refusal, so this reads the flag the
-     * device would have thrown over.
+     * Which of the two mutability flags, and why either is needed at all, is
+     * {@code createUpdate}'s to explain. What matters here is that the flag is
+     * the one thing about this the JVM can see at all.
      */
     @Test
-    public void theTicksPendingIntentIsMutable() {
+    public void theTicksPendingIntentIsImmutable() {
         enableWidget();
 
-        assertFalse("the tick's PendingIntent is mutable today",
+        assertTrue("the tick's PendingIntent should be immutable",
                 tickPendingIntent().isImmutable());
     }
 

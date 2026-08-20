@@ -138,13 +138,27 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
     }
 
     /**
-     * Creates an intent to update the clock(s).
+     * Creates the {@link PendingIntent} that broadcasts an update to the widget.
+     *
+     * <p>Immutable because one built with neither {@code FLAG_IMMUTABLE} nor
+     * {@code FLAG_MUTABLE} is fatal when targeting S ≥ 31, and a process that
+     * dies scheduling its tick never gets as far as drawing anything. Immutable
+     * rather than mutable because the intent says only <em>redraw now</em>:
+     * there is nothing in it for a receiver to fill in.
+     *
+     * <p>What holds this to one alarm is not a flag but identity — two
+     * {@link PendingIntent}s equal on request code and
+     * {@link Intent#filterEquals} are the same one, so {@link AlarmManager}
+     * replaces rather than accumulates, and {@link #onDisabled} can cancel the
+     * alarm {@link #startTicking} set. {@code FLAG_UPDATE_CURRENT} does not
+     * provide that; it only refreshes an existing instance's extras, which is a
+     * no-op while this intent carries none and the right flag if it ever does.
      *
      * @param context application context
-     * @return the intent to update the clock
+     * @return the {@link PendingIntent} whose delivery triggers a redraw
      */
     private PendingIntent createUpdate(Context context) {
         return PendingIntent.getBroadcast(context, 0, new Intent(ACTION_CLOCK_UPDATE),
-                PendingIntent.FLAG_UPDATE_CURRENT);
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 }
