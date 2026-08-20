@@ -22,19 +22,10 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Rect;
-import android.widget.RemoteViews;
 
-import androidx.annotation.NonNull;
-
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.Calendar;
 
-import info.staticfree.android.twentyfourhour.dial.Dial;
-import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
+import info.staticfree.android.twentyfourhour.widget.WidgetPicture;
 
 public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
 
@@ -72,7 +63,8 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
     }
 
     /**
-     * Renders the widget and arms the tick that will render it again.
+     * Arms the tick that will redraw the widgets, then gives each of them a
+     * freshly built picture.
      *
      * <p>One rule rather than two hooks: everything that redraws the widget also
      * schedules the next redraw, so <em>a widget on screen has a tick behind
@@ -86,47 +78,18 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
      * <p>Armed before the render rather than after, so a render that throws —
      * an allocation failure under memory pressure, say — costs one redraw rather
      * than the clock.
+     *
+     * <p>A picture each, rather than one built and shown on every id: the ids in
+     * one update are separate widgets in cells of their own sizes, and a picture
+     * can only answer to one of them.
      */
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         startTicking(context);
 
-        final RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.widget);
-
-        // Every update is a whole one, so the click intent is attached every
-        // time rather than once: there is no earlier update left underneath for
-        // it to survive in.
-        final PendingIntent intent = ClockUtil.getClockIntent(context);
-        if (intent != null) {
-            rv.setOnClickPendingIntent(R.id.clock, intent);
+        for (int appWidgetId : appWidgetIds) {
+            appWidgetManager.updateAppWidget(appWidgetId, WidgetPicture.build(context));
         }
-
-        rv.setImageViewBitmap(R.id.clock, render(context));
-
-        appWidgetManager.updateAppWidget(appWidgetIds, rv);
-    }
-
-    /**
-     * Draws the dial into a bitmap the host can show.
-     *
-     * <p>The bitmap is the dial's intrinsic size, which is the artwork's own, so
-     * the dial is drawn at the resolution it was painted for. The dial fills
-     * whatever bounds it is given, so a larger bitmap would not be a larger
-     * dial, only the same art upscaled. What size the widget's cell actually is,
-     * the receiver has no way to ask here; sizing the bitmap to the cell is the
-     * architecture review's candidate E.
-     */
-    @NonNull
-    private static Bitmap render(@NonNull Context context) {
-        final Dial dial = Dial.createStandard(context, new SunPositionOverlay(context));
-        final int size = dial.getIntrinsicSize();
-
-        final Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
-
-        dial.draw(new Canvas(bitmap), new Rect(0, 0, size, size), Instant.now(),
-                ZoneId.systemDefault());
-
-        return bitmap;
     }
 
     /**

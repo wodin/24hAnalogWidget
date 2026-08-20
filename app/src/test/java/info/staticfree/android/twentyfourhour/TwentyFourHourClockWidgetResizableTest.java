@@ -1,9 +1,7 @@
 package info.staticfree.android.twentyfourhour;
 
-import static info.staticfree.android.twentyfourhour.dial.Artwork.INTRINSIC_PX;
-import static info.staticfree.android.twentyfourhour.dial.Artwork.isHand;
-import static info.staticfree.android.twentyfourhour.dial.Artwork.probe;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
@@ -37,17 +35,20 @@ import java.util.List;
  *
  * <p>Part of it is a <em>characterisation</em> net, asserting what the receiver
  * does today precisely so that changing it is deliberate: the alarm carries a
- * repeat interval rather than being armed a minute at a time, its intent names
- * no receiver, and the bitmap is the artwork's own size whatever the host's
- * cell measures. All three are wrong, all
- * three are about to be fixed, and each one should fail loudly when it is — a
- * flip visible in a diff rather than inferred from a green suite.
+ * repeat interval rather than being armed a minute at a time, and its intent
+ * names no receiver. Both are wrong, both are about to be fixed, and each should
+ * fail loudly when it is — a flip visible in a diff rather than inferred from a
+ * green suite.
  *
  * <p>The rest pins what must <em>survive</em> that work: a wall-clock alarm that
  * does not wake the device, anchored to the top of a minute, carried by an
  * immutable {@link PendingIntent}, cancelled when the last widget goes, and a
- * picture that reaches the host at all. A net woven only from the parts due to
- * change would let the parts not due to change break in silence.
+ * picture that reaches every widget the update names. A net woven only from the
+ * parts due to change would let the parts not due to change break in silence.
+ *
+ * <p>What the picture <em>is</em> — its bitmap's size, the tap on it — belongs
+ * to {@code WidgetPictureTest}, which needs no broadcast to ask. Left here is
+ * the wiring: that a picture is built per id and reaches the host.
  *
  * <p>What it cannot say: that a {@code PendingIntent} declaring neither
  * mutability flag is fatal. Robolectric's {@code ShadowPendingIntent} does not
@@ -201,43 +202,39 @@ public class TwentyFourHourClockWidgetResizableTest {
     }
 
     /**
-     * The picture reaches the host: the {@code RemoteViews} the receiver sends
-     * inflates to the widget layout with a rendered dial on it. Robolectric
-     * applies it into a real {@code AppWidgetHostView}, so a {@code RemoteViews}
-     * the host could not inflate would fail here too.
+     * An update names ids, plural, and each of them is a widget of its own: the
+     * receiver builds a picture per id rather than building one and showing it
+     * on all of them. Nothing but this test holds it there — the picture does
+     * not yet vary by id, so both readings look alike — but it is what stops a
+     * second widget from being drawn to the first one's cell once the cell is
+     * what decides the picture.
      *
-     * <p>Probed at the centre rather than merely asserted non-null, because the
-     * layout already carries the Face as its {@code src}: an update that set no
-     * bitmap at all would still leave an image behind, and one of exactly this
-     * size. Both hands meet at the centre whatever the time, and the bare Face
-     * there is near-white, so a hand at the centre is a render and nothing else.
+     * <p>Read by identity, not by pixels. Two widgets are drawn from the same
+     * artwork at the same moment, so their pictures are indistinguishable to
+     * look at, and pinning has already put a rendered one on each: probing
+     * either would pass without this update having happened at all. Identity is
+     * also what carries the wiring claim this file is left with — a bitmap that
+     * changed is one the receiver's own update put there.
+     *
+     * <p>Only the last of the three assertions tells the two implementations
+     * apart; the first two say the update happened at all, without which the
+     * last would hold just as well over two untouched widgets.
      */
     @Test
-    public void updatingAWidgetShowsARenderedDialAndNotTheBareFace() {
-        int widgetId = pinWidget();
+    public void updatingTwoWidgetsGivesEachOneAPictureOfItsOwn() {
+        int first = pinWidget();
+        int second = pinWidget();
+        Bitmap firstAtPinning = bitmapShownOn(first);
+        Bitmap secondAtPinning = bitmapShownOn(second);
 
-        deliver(update(widgetId));
+        deliver(update(first, second));
 
-        assertTrue("the hands should meet at the centre of the picture",
-                isHand(probe(bitmapShownOn(widgetId), 0, 0)));
-    }
-
-    /**
-     * The bitmap is square at the size of the Face artwork, whatever the host's
-     * cell measures. Sizing it from the cell instead is still to come, at which
-     * point this assertion is meant to fail.
-     */
-    @Test
-    public void theBitmapIsSquareAtTheSizeOfTheFaceArtwork() {
-        int widgetId = pinWidget();
-
-        deliver(update(widgetId));
-
-        Bitmap shown = bitmapShownOn(widgetId);
-
-        assertEquals("the bitmap should be the size of the Face artwork", INTRINSIC_PX,
-                shown.getWidth());
-        assertEquals("the bitmap should be square", shown.getWidth(), shown.getHeight());
+        assertNotSame("the first widget should have been redrawn", firstAtPinning,
+                bitmapShownOn(first));
+        assertNotSame("the second widget should have been redrawn", secondAtPinning,
+                bitmapShownOn(second));
+        assertNotSame("each widget should have a bitmap of its own", bitmapShownOn(first),
+                bitmapShownOn(second));
     }
 
     /**
@@ -268,9 +265,9 @@ public class TwentyFourHourClockWidgetResizableTest {
     }
 
     @NonNull
-    private static Intent update(int widgetId) {
+    private static Intent update(int... widgetIds) {
         return new Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
-                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, new int[]{widgetId});
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, widgetIds);
     }
 
     /** One broadcast, to a receiver that has never seen another. */
