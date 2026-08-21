@@ -34,8 +34,16 @@ _Avoid_: layer, decoration, plugin
 **Sun position**:
 Where the sun is, as an angle on the dial. Because the dial is a 24-hour scale
 that angle is a clock time, so sunrise, sunset and the twilights are drawn where
-the hour hand would stand at each.
-_Avoid_: sun angle, solar position
+the hour hand would stand at each. Not the sun library's `SunPosition`, which is
+a direction in the sky — azimuth and altitude — and which nothing here imports.
+_Avoid_: sun angle, solar position, SunPosition
+
+**Sun path**:
+The sun's whole day at one place: sunrise, sunset, the three twilights either
+side, and high noon. A Sun position is one point on it. A path needs a location,
+and not every location has one every day — London loses its astronomical
+twilight around midsummer. With no path, the dial draws the Placeholder instead.
+_Avoid_: sun times, solar events, ephemeris
 
 **Twilight**:
 The graded band between full day and full night, in three widening steps: civil,
