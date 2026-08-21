@@ -35,9 +35,12 @@ import info.staticfree.android.twentyfourhour.observer.Observer;
  * <p>A public city centre, never the device's own fix: this repo is public.
  *
  * <p>The only fixture visible outside this package, because it is the only one
- * with a reader outside it: {@code SunPositionOverlayTest} probes this day's
- * shading in pixels, and a second copy of these coordinates would be a second
- * answer about where Buenos Aires is.
+ * with readers outside it. The pixel probes want this place's day; the reader
+ * that produces an {@link Observer} from the phone wants nothing of the day at
+ * all, only a latitude and a longitude that are safe to publish and are written
+ * down once — a second copy of them would be a second answer about where Buenos
+ * Aires is. Named by role rather than by class here, because the list of
+ * readers has grown twice already.
  */
 public final class BuenosAires {
     static final double LATITUDE = -34.61;
