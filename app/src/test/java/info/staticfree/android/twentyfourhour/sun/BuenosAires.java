@@ -33,24 +33,35 @@ import info.staticfree.android.twentyfourhour.observer.Observer;
  * side of zero.
  *
  * <p>A public city centre, never the device's own fix: this repo is public.
+ *
+ * <p>The only fixture visible outside this package, because it is the only one
+ * with a reader outside it: {@code SunPositionOverlayTest} probes this day's
+ * shading in pixels, and a second copy of these coordinates would be a second
+ * answer about where Buenos Aires is.
  */
-final class BuenosAires {
+public final class BuenosAires {
     static final double LATITUDE = -34.61;
 
     static final double LONGITUDE = -58.38;
 
     /** Argentina has kept a fixed UTC&minus;3 with no daylight saving since 2009. */
-    static final ZoneId ZONE = ZoneId.of("America/Argentina/Buenos_Aires");
+    public static final ZoneId ZONE = ZoneId.of("America/Argentina/Buenos_Aires");
 
     static final LocalDate DATE = LocalDate.of(2026, Month.AUGUST, 15);
 
     /** Local noon, for the reason {@link Berlin} gives. */
-    private static final Instant SOMETIME_THAT_DAY =
+    public static final Instant SOMETIME_THAT_DAY =
             LocalDateTime.of(DATE, LocalTime.NOON).atZone(ZONE).toInstant();
+
+    /** Where this fixture stands, for anything that wants the place and not the day. */
+    @NonNull
+    public static Observer observer() {
+        return new Observer(LATITUDE, LONGITUDE);
+    }
 
     @NonNull
     static SunPath sunPath() {
-        SunPath path = SunPath.on(new Observer(LATITUDE, LONGITUDE), SOMETIME_THAT_DAY, ZONE);
+        SunPath path = SunPath.on(observer(), SOMETIME_THAT_DAY, ZONE);
 
         assertNotNull("Buenos Aires in August has a sunrise, a sunset and all three twilights",
                 path);

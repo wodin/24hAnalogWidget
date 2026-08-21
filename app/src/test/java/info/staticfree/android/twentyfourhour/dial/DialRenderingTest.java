@@ -208,7 +208,7 @@ public class DialRenderingTest {
     }
 
     /**
-     * With no location known, the sun overlay hatches a nominal night: 18:00
+     * With no Observer known, the sun overlay hatches a nominal night: 18:00
      * through midnight to 06:00. Midnight is at the bottom of a 24-hour dial, so
      * that is the lower half and only the lower half.
      *

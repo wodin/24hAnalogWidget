@@ -67,8 +67,9 @@ _Avoid_: location, coordinates, GPS
 
 **Placeholder**:
 The hatched shading over a nominal night, 18:00 through midnight to 06:00, drawn
-when no Observer is known. It means "the sun position is unknown", not "the sun
-is down for these hours".
+whenever there is no Sun path to draw — either because no Observer is known, or
+because the Observer's place has none that day. It means "the sun position is
+unknown", not "the sun is down for these hours".
 _Avoid_: empty state, fallback, no-data tile
 
 ## The app

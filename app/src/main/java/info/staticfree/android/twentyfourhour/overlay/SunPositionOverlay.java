@@ -28,7 +28,6 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.Shader;
-import android.location.Location;
 import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -63,7 +62,7 @@ public class SunPositionOverlay implements DialOverlay {
     private final RectF inset = new RectF();
 
     @Nullable
-    private Location location;
+    private Observer observer;
 
     private static final Paint OVERLAY_NO_INFO_PAINT = new Paint(Paint.ANTI_ALIAS_FLAG);
 
@@ -104,8 +103,13 @@ public class SunPositionOverlay implements DialOverlay {
         this.showHighNoon = showHighNoon;
     }
 
-    public void setLocation(@Nullable Location location) {
-        this.location = location;
+    /**
+     * Where the dial is being looked at from, or {@code null} if nobody knows.
+     * Pushed in rather than read here: an overlay is a painter, and a painter
+     * that went looking for the answer would be doing it inside a draw.
+     */
+    public void setObserver(@Nullable Observer observer) {
+        this.observer = observer;
     }
 
     private static float arcAngleFor(@NonNull ZonedDateTime moment) {
@@ -124,7 +128,7 @@ public class SunPositionOverlay implements DialOverlay {
         inset.set(centre - insetRadius, centre - insetRadius, centre + insetRadius,
                 centre + insetRadius);
 
-        if (location == null) {
+        if (observer == null) {
             // Not an error, and the Placeholder says so: the sun position is
             // unknown rather than absent.
             drawPlaceholder(canvas);
@@ -132,11 +136,10 @@ public class SunPositionOverlay implements DialOverlay {
             return;
         }
 
-        SunPath path = SunPath.on(new Observer(location.getLatitude(), location.getLongitude()),
-                instant, zone);
+        SunPath path = SunPath.on(observer, instant, zone);
 
         if (path == null) {
-            Log.w(TAG, "no sun path at " + location + "; drawing the placeholder instead");
+            Log.w(TAG, "no sun path at " + observer + "; drawing the placeholder instead");
             drawPlaceholder(canvas);
 
             return;

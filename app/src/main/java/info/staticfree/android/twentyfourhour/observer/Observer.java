@@ -15,6 +15,8 @@ package info.staticfree.android.twentyfourhour.observer;
  * not, see <http://www.gnu.org/licenses/>.
  */
 
+import androidx.annotation.NonNull;
+
 /**
  * Where the viewer stands: a latitude and a longitude, and nothing else.
  *
@@ -56,5 +58,21 @@ public final class Observer {
     /** Degrees east of Greenwich; negative west of it. */
     public double longitude() {
         return longitude;
+    }
+
+    /**
+     * The two numbers comma-separated, latitude first, which is the order every
+     * mapping service reads them in — so a log line carrying one can be pasted
+     * straight into a map.
+     *
+     * <p>Here because a painter that cannot find a sun path says so to the log,
+     * and that line is only worth writing if it names the place it failed at.
+     * There is deliberately no {@code equals} to go with it: nothing compares
+     * two observers, and a value that is only ever printed needs only this.
+     */
+    @Override
+    @NonNull
+    public String toString() {
+        return latitude + ", " + longitude;
     }
 }
