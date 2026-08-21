@@ -12,7 +12,7 @@ import java.time.Month;
 import java.time.ZoneId;
 
 /**
- * The one place and the one day every sun test asks about.
+ * The place and the day the sun tests start from.
  *
  * <p>Berlin in mid-February: a temperate latitude far enough from an equinox
  * for the nine moments to be plainly distinct, and far enough from a solstice
@@ -21,6 +21,10 @@ import java.time.ZoneId;
  * a lie. Its winter offset is a fixed UTC+1 with no daylight saving transition
  * near, so the zone is a whole hour off UTC without being zero: enough to catch
  * an offset dropped on the floor, not enough to drag in an ambiguous hour.
+ *
+ * <p>{@link BuenosAires} is deliberately its mirror, six months and a
+ * hemisphere away, and everything above is why that is what a mirror of this
+ * had to be.
  *
  * <p>Here rather than in either test because which day the sun tests examine is
  * one decision, and the two tests must be looking at the same one for their

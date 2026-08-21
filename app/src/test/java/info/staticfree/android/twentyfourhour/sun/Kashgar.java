@@ -21,9 +21,11 @@ import java.time.ZoneId;
  * counterexample to {@link Berlin}: everything a temperate mid-February day
  * hides about dating, this one shows.
  *
- * <p>Only for the dating claim. {@link Berlin} remains the day the sun tests
- * ask their questions of, because a second place with published times to check
- * against is a cost {@link SunPathAlmanacTest} has no reason to pay.
+ * <p>Only for the dating claim, and so the one fixture with no published times
+ * recorded against it: what it is here to show is where a day <em>sits</em>
+ * against a clock, which {@link SunPathShapeTest} can see for itself. Being
+ * right to the minute is {@link Berlin}'s question and {@link BuenosAires}'s,
+ * and it is answered where the almanac is.
  */
 final class Kashgar {
     static final double LATITUDE = 39.4704;

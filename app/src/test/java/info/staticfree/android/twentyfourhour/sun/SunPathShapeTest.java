@@ -25,10 +25,12 @@ import java.time.ZonedDateTime;
  * holds however inaccurate the almanac behind it is, so this one cannot notice
  * an hour's error and must not be asked to.
  *
- * <p>Two places, for two different reasons. {@link Berlin} is the day the sun
- * tests ask their questions of, temperate and unremarkable. {@link Kashgar} is
- * here only because its day overruns local midnight, which is the one thing
- * Berlin's cannot show.
+ * <p>Three places, for three different reasons. {@link Berlin} is the day the
+ * sun tests ask their questions of, temperate and unremarkable.
+ * {@link BuenosAires} is the same kind of day in the other hemisphere, because
+ * a shape that only ever held north of the equator was never shown to be a
+ * shape. {@link Kashgar} is here only because its day overruns local midnight,
+ * which is the one thing the other two cannot show.
  */
 public class SunPathShapeTest {
 
@@ -37,10 +39,15 @@ public class SunPathShapeTest {
      * definition of a day; the twilights nest outward from it, civil inside
      * nautical inside astronomical, because each is defined by the sun being
      * further below the horizon than the last.
+     *
+     * <p>Asked of both hemispheres, because the arithmetic behind it is not
+     * symmetric in the sign of a latitude: a day shown to run in order only
+     * north of the equator was never shown to be a day.
      */
     @Test
     public void theDayRunsInOrder() {
         assertRunsInOrder(Berlin.sunPath());
+        assertRunsInOrder(BuenosAires.sunPath());
     }
 
     /**
@@ -48,15 +55,18 @@ public class SunPathShapeTest {
      * asked for, read in the zone asked for. This is what says the moments came
      * back in the caller's terms rather than in the library's.
      *
-     * <p>The date half of that is true of this place on this day and not of
+     * <p>Buenos Aires runs three hours <em>behind</em> UTC where Berlin runs an
+     * hour ahead, so an offset applied with the wrong sign lands six hours out
+     * there — far enough to carry the evening's last twilight over into the
+     * next date, where this notices it.
+     *
+     * <p>The date half of that is true of these two days and not of every day
      * everywhere — see {@link #aDayMayReachPastLocalMidnight()}.
      */
     @Test
     public void everyMomentBelongsToTheDayAndZoneAskedFor() {
-        for (ZonedDateTime moment : allNine(Berlin.sunPath())) {
-            assertEquals(Berlin.ZONE, moment.getZone());
-            assertEquals(Berlin.DATE, moment.toLocalDate());
-        }
+        assertEveryMomentBelongsTo(Berlin.ZONE, Berlin.DATE, Berlin.sunPath());
+        assertEveryMomentBelongsTo(BuenosAires.ZONE, BuenosAires.DATE, BuenosAires.sunPath());
     }
 
     /**
@@ -120,6 +130,14 @@ public class SunPathShapeTest {
         assertNull("London in late June has a sunrise and a sunset but never a night dark " +
                         "enough for astronomical twilight, so there is no whole day to draw",
                 SunPath.on(latitude, longitude, solstice, zone));
+    }
+
+    private static void assertEveryMomentBelongsTo(@NonNull ZoneId zone, @NonNull LocalDate date,
+            @NonNull SunPath path) {
+        for (ZonedDateTime moment : allNine(path)) {
+            assertEquals("every moment is read in the zone asked for", zone, moment.getZone());
+            assertEquals(moment + " should belong to " + date, date, moment.toLocalDate());
+        }
     }
 
     private static void assertRunsInOrder(@NonNull SunPath path) {

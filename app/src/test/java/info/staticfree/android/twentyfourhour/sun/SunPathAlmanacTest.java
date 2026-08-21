@@ -72,6 +72,50 @@ import java.time.ZonedDateTime;
  * wrong call — but a reader deserves to know that the green here rests on it,
  * rather than discovering it by changing one constant.
  *
+ * <h2>And the same again, south of the equator</h2>
+ *
+ * <p>{@link BuenosAires} on 15 August 2026 is checked against the same two
+ * services, split the same way and for the same reasons: MET Norway for the two
+ * horizon crossings and the transit, sunrise-sunset.org for the six twilights
+ * it does not publish. Nothing about that division was reconsidered per place,
+ * which is the point of having decided it on grounds other than agreement.
+ *
+ * <p>It agrees with itself the same way, and the working is worth reading
+ * because it is a check a second place can offer that the first cannot: an
+ * error in the sign of a latitude would leave Berlin's numbers untouched.
+ * MET publishes the disc centre 41.49&deg; up at transit, which pins this day's
+ * declination at 90&deg; &minus; 41.49&deg; &minus; 34.61&deg; = &plus;13.90&deg;
+ * — a <em>northern</em> declination over a southern observer, which is what
+ * mid-August at this latitude means and what a mirrored February in Berlin
+ * would not have shown. The same half-day formula on it gives 5h24m54s, so a
+ * day of 10h49m47s, against MET's own published crossings 10h50m apart. At
+ * &minus;6&deg;, &minus;12&deg; and &minus;18&deg; it puts the twilights
+ * 25m57s, 55m38s and 1h25m00s from sunrise; sunrise-sunset.org's published
+ * twilights sit 25m52s, 55m33s and 1h24m55s from MET's sunrise, and 25m50s,
+ * 55m31s and 1h24m53s from MET's sunset. Within seven seconds on all three,
+ * morning and evening.
+ *
+ * <p>sunrise-sunset.org disagrees with MET Norway about sunrise here as it does
+ * at Berlin, and in the same direction: its 07:31:45 local is 75 seconds ahead
+ * of MET's 07:33, where at Berlin its 07:20:27 is 93 seconds ahead of 07:22. So
+ * its sunrise is not used here either — for the reason given above rather than
+ * for a fresh one, since two sources cannot settle which of them is the odd one
+ * out and only Berlin was surveyed four ways.
+ *
+ * <p>This fixture was added expecting to find something, and did not: all nine
+ * moments land 11 to 16 seconds from what was published, where Berlin's run 17
+ * to 68. So the southern hemisphere is not a degraded case here, and that is
+ * the finding rather than a bug — worth stating, because a reader who assumes
+ * an untested hemisphere was a broken one would be wrong about every version of
+ * this file.
+ *
+ * <p>Each test below is one claim rather than one place: "sunrise and sunset
+ * match MET Norway" is a single fact about this app, and it is checked at both
+ * of the places it was measured at. Split per place instead, a reader would
+ * have to compare two methods to see that they are asking the same question,
+ * and a third place would be a few more lines inside these three rather than
+ * three more methods to keep in step.
+ *
  * <h2>Why two minutes</h2>
  *
  * <p>A tolerance cannot be finer than its sources agree, and these span about
@@ -92,14 +136,14 @@ public class SunPathAlmanacTest {
      * ?lat=52.5200&lon=13.4050&date=2026-02-15&offset=+01:00}. Published to the
      * minute, which is part of why the tolerance is what it is.
      */
-    private static final OffsetDateTime MET_NORWAY_SUNRISE =
+    private static final OffsetDateTime BERLIN_MET_NORWAY_SUNRISE =
             OffsetDateTime.parse("2026-02-15T07:22+01:00");
 
-    private static final OffsetDateTime MET_NORWAY_SUNSET =
+    private static final OffsetDateTime BERLIN_MET_NORWAY_SUNSET =
             OffsetDateTime.parse("2026-02-15T17:18+01:00");
 
     /** MET Norway's {@code solarnoon}: the sun's true transit of the meridian. */
-    private static final OffsetDateTime MET_NORWAY_SOLAR_TRANSIT =
+    private static final OffsetDateTime BERLIN_MET_NORWAY_SOLAR_TRANSIT =
             OffsetDateTime.parse("2026-02-15T12:20+01:00");
 
     /**
@@ -109,23 +153,64 @@ public class SunPathAlmanacTest {
      * comparing them against the response is reading and not arithmetic. Berlin
      * is an hour ahead of them on this date.
      */
-    private static final OffsetDateTime DOT_ORG_MORNING_ASTRONOMICAL_TWILIGHT =
+    private static final OffsetDateTime BERLIN_DOT_ORG_MORNING_ASTRONOMICAL_TWILIGHT =
             OffsetDateTime.parse("2026-02-15T04:27:28+00:00");
 
-    private static final OffsetDateTime DOT_ORG_MORNING_NAUTICAL_TWILIGHT =
+    private static final OffsetDateTime BERLIN_DOT_ORG_MORNING_NAUTICAL_TWILIGHT =
             OffsetDateTime.parse("2026-02-15T05:06:57+00:00");
 
-    private static final OffsetDateTime DOT_ORG_MORNING_CIVIL_TWILIGHT =
+    private static final OffsetDateTime BERLIN_DOT_ORG_MORNING_CIVIL_TWILIGHT =
             OffsetDateTime.parse("2026-02-15T05:46:55+00:00");
 
-    private static final OffsetDateTime DOT_ORG_EVENING_CIVIL_TWILIGHT =
+    private static final OffsetDateTime BERLIN_DOT_ORG_EVENING_CIVIL_TWILIGHT =
             OffsetDateTime.parse("2026-02-15T16:54:01+00:00");
 
-    private static final OffsetDateTime DOT_ORG_EVENING_NAUTICAL_TWILIGHT =
+    private static final OffsetDateTime BERLIN_DOT_ORG_EVENING_NAUTICAL_TWILIGHT =
             OffsetDateTime.parse("2026-02-15T17:33:58+00:00");
 
-    private static final OffsetDateTime DOT_ORG_EVENING_ASTRONOMICAL_TWILIGHT =
+    private static final OffsetDateTime BERLIN_DOT_ORG_EVENING_ASTRONOMICAL_TWILIGHT =
             OffsetDateTime.parse("2026-02-15T18:13:27+00:00");
+
+    /**
+     * MET Norway again, verbatim from {@code https://api.met.no/weatherapi/sunrise/3.0/sun
+     * ?lat=-34.61&lon=-58.38&date=2026-08-15&offset=-03:00}. The offset is asked
+     * for in the response's own terms, so these read as Buenos Aires wall clock.
+     */
+    private static final OffsetDateTime BUENOS_AIRES_MET_NORWAY_SUNRISE =
+            OffsetDateTime.parse("2026-08-15T07:33-03:00");
+
+    private static final OffsetDateTime BUENOS_AIRES_MET_NORWAY_SUNSET =
+            OffsetDateTime.parse("2026-08-15T18:23-03:00");
+
+    /** Its {@code solarnoon}, published with the disc centre 41.49&deg; up. */
+    private static final OffsetDateTime BUENOS_AIRES_MET_NORWAY_SOLAR_TRANSIT =
+            OffsetDateTime.parse("2026-08-15T12:58-03:00");
+
+    /**
+     * sunrise-sunset.org, verbatim from {@code https://api.sunrise-sunset.org/json
+     * ?lat=-34.61&lng=-58.38&date=2026-08-15&formatted=0}. In UTC as that service
+     * answers, for the reason Berlin's are: comparing these against the response
+     * should be reading and not arithmetic. Buenos Aires is three hours behind
+     * them, so its morning twilights carry the same date in UTC and its evening
+     * ones have not yet crossed into the next.
+     */
+    private static final OffsetDateTime BUENOS_AIRES_DOT_ORG_MORNING_ASTRONOMICAL_TWILIGHT =
+            OffsetDateTime.parse("2026-08-15T09:08:05+00:00");
+
+    private static final OffsetDateTime BUENOS_AIRES_DOT_ORG_MORNING_NAUTICAL_TWILIGHT =
+            OffsetDateTime.parse("2026-08-15T09:37:27+00:00");
+
+    private static final OffsetDateTime BUENOS_AIRES_DOT_ORG_MORNING_CIVIL_TWILIGHT =
+            OffsetDateTime.parse("2026-08-15T10:07:08+00:00");
+
+    private static final OffsetDateTime BUENOS_AIRES_DOT_ORG_EVENING_CIVIL_TWILIGHT =
+            OffsetDateTime.parse("2026-08-15T21:48:50+00:00");
+
+    private static final OffsetDateTime BUENOS_AIRES_DOT_ORG_EVENING_NAUTICAL_TWILIGHT =
+            OffsetDateTime.parse("2026-08-15T22:18:31+00:00");
+
+    private static final OffsetDateTime BUENOS_AIRES_DOT_ORG_EVENING_ASTRONOMICAL_TWILIGHT =
+            OffsetDateTime.parse("2026-08-15T22:47:53+00:00");
 
     /**
      * See <em>Why two minutes</em> above. One tolerance for all nine moments,
@@ -135,33 +220,41 @@ public class SunPathAlmanacTest {
      */
     private static final Duration TOLERANCE = Duration.ofMinutes(2);
 
-    private SunPath path;
+    private SunPath berlin;
+
+    private SunPath buenosAires;
 
     @Before
-    public void computeTheDay() {
-        path = Berlin.sunPath();
+    public void computeTheDays() {
+        berlin = Berlin.sunPath();
+        buenosAires = BuenosAires.sunPath();
     }
 
     @Test
     public void sunriseAndSunsetMatchMetNorway() {
-        assertPublished("sunrise", MET_NORWAY_SUNRISE, path.sunrise(), TOLERANCE);
-        assertPublished("sunset", MET_NORWAY_SUNSET, path.sunset(), TOLERANCE);
+        assertPublished("Berlin sunrise", BERLIN_MET_NORWAY_SUNRISE, berlin.sunrise(), TOLERANCE);
+        assertPublished("Berlin sunset", BERLIN_MET_NORWAY_SUNSET, berlin.sunset(), TOLERANCE);
+
+        assertPublished("Buenos Aires sunrise", BUENOS_AIRES_MET_NORWAY_SUNRISE,
+                buenosAires.sunrise(), TOLERANCE);
+        assertPublished("Buenos Aires sunset", BUENOS_AIRES_MET_NORWAY_SUNSET,
+                buenosAires.sunset(), TOLERANCE);
     }
 
     @Test
     public void theTwilightsMatchSunriseSunsetOrg() {
-        assertPublished("morning astronomical twilight", DOT_ORG_MORNING_ASTRONOMICAL_TWILIGHT,
-                path.morningAstronomicalTwilight(), TOLERANCE);
-        assertPublished("morning nautical twilight", DOT_ORG_MORNING_NAUTICAL_TWILIGHT,
-                path.morningNauticalTwilight(), TOLERANCE);
-        assertPublished("morning civil twilight", DOT_ORG_MORNING_CIVIL_TWILIGHT,
-                path.morningCivilTwilight(), TOLERANCE);
-        assertPublished("evening civil twilight", DOT_ORG_EVENING_CIVIL_TWILIGHT,
-                path.eveningCivilTwilight(), TOLERANCE);
-        assertPublished("evening nautical twilight", DOT_ORG_EVENING_NAUTICAL_TWILIGHT,
-                path.eveningNauticalTwilight(), TOLERANCE);
-        assertPublished("evening astronomical twilight", DOT_ORG_EVENING_ASTRONOMICAL_TWILIGHT,
-                path.eveningAstronomicalTwilight(), TOLERANCE);
+        assertTwilightsPublished("Berlin", berlin, BERLIN_DOT_ORG_MORNING_ASTRONOMICAL_TWILIGHT,
+                BERLIN_DOT_ORG_MORNING_NAUTICAL_TWILIGHT, BERLIN_DOT_ORG_MORNING_CIVIL_TWILIGHT,
+                BERLIN_DOT_ORG_EVENING_CIVIL_TWILIGHT, BERLIN_DOT_ORG_EVENING_NAUTICAL_TWILIGHT,
+                BERLIN_DOT_ORG_EVENING_ASTRONOMICAL_TWILIGHT);
+
+        assertTwilightsPublished("Buenos Aires", buenosAires,
+                BUENOS_AIRES_DOT_ORG_MORNING_ASTRONOMICAL_TWILIGHT,
+                BUENOS_AIRES_DOT_ORG_MORNING_NAUTICAL_TWILIGHT,
+                BUENOS_AIRES_DOT_ORG_MORNING_CIVIL_TWILIGHT,
+                BUENOS_AIRES_DOT_ORG_EVENING_CIVIL_TWILIGHT,
+                BUENOS_AIRES_DOT_ORG_EVENING_NAUTICAL_TWILIGHT,
+                BUENOS_AIRES_DOT_ORG_EVENING_ASTRONOMICAL_TWILIGHT);
     }
 
     /**
@@ -172,10 +265,11 @@ public class SunPathAlmanacTest {
      * near neighbour of the transit rather than the same moment: the sun's
      * declination moves between one horizon crossing and the other, so the two
      * crossings are not symmetric about the transit. That was worth some 20
-     * seconds here — and it is <em>not</em> the equation of time, which shifts
-     * the transit and both crossings alike and so cancels out of a midpoint
-     * exactly. The midpoint measured 68 seconds after MET Norway's transit;
-     * the transit itself measures 50, of a piece with the other eight moments.
+     * seconds at Berlin — and it is <em>not</em> the equation of time, which
+     * shifts the transit and both crossings alike and so cancels out of a
+     * midpoint exactly. The midpoint measured 68 seconds after MET Norway's
+     * transit; the transit itself measures 50, of a piece with the other eight
+     * moments.
      *
      * <p>So this test is still separate, but for a smaller reason: it is the
      * one moment MET Norway publishes that the six twilights cannot corroborate,
@@ -184,7 +278,29 @@ public class SunPathAlmanacTest {
      */
     @Test
     public void highNoonIsTheSolarTransit() {
-        assertPublished("high noon", MET_NORWAY_SOLAR_TRANSIT, path.highNoon(), TOLERANCE);
+        assertPublished("Berlin high noon", BERLIN_MET_NORWAY_SOLAR_TRANSIT, berlin.highNoon(),
+                TOLERANCE);
+        assertPublished("Buenos Aires high noon", BUENOS_AIRES_MET_NORWAY_SOLAR_TRANSIT,
+                buenosAires.highNoon(), TOLERANCE);
+    }
+
+    /** The six twilights of one place, in the order they happen. */
+    private static void assertTwilightsPublished(String place, SunPath path,
+            OffsetDateTime morningAstronomical, OffsetDateTime morningNautical,
+            OffsetDateTime morningCivil, OffsetDateTime eveningCivil,
+            OffsetDateTime eveningNautical, OffsetDateTime eveningAstronomical) {
+        assertPublished(place + " morning astronomical twilight", morningAstronomical,
+                path.morningAstronomicalTwilight(), TOLERANCE);
+        assertPublished(place + " morning nautical twilight", morningNautical,
+                path.morningNauticalTwilight(), TOLERANCE);
+        assertPublished(place + " morning civil twilight", morningCivil,
+                path.morningCivilTwilight(), TOLERANCE);
+        assertPublished(place + " evening civil twilight", eveningCivil,
+                path.eveningCivilTwilight(), TOLERANCE);
+        assertPublished(place + " evening nautical twilight", eveningNautical,
+                path.eveningNauticalTwilight(), TOLERANCE);
+        assertPublished(place + " evening astronomical twilight", eveningAstronomical,
+                path.eveningAstronomicalTwilight(), TOLERANCE);
     }
 
     private static void assertPublished(String moment, OffsetDateTime published,
