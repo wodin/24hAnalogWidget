@@ -30,6 +30,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
+import info.staticfree.android.twentyfourhour.observer.Observer;
+
 /**
  * The sun's whole day at one place: sunrise, sunset, the three twilights either
  * side, and high noon. A Sun position is one point on it.
@@ -73,10 +75,10 @@ public final class SunPath {
     private final ZonedDateTime eveningAstronomicalTwilight;
 
     /**
-     * The sun's day at {@code latitude}/{@code longitude}, for whichever day
-     * contains {@code instant} when read in {@code zone}. Every moment returned
-     * is read in that same zone, so a path cannot be asked for one place and
-     * read in another's terms.
+     * The sun's day where {@code observer} stands, for whichever day contains
+     * {@code instant} when read in {@code zone}. Every moment returned is read
+     * in that same zone, so a path cannot be asked for one place and read in
+     * another's terms.
      *
      * <p><strong>The sun's day, not the calendar's.</strong> It is built
      * outward from high noon — the crossings before it are the morning, the
@@ -96,9 +98,9 @@ public final class SunPath {
      *         draw either way.
      */
     @Nullable
-    public static SunPath on(double latitude, double longitude, @NonNull Instant instant,
+    public static SunPath on(@NonNull Observer observer, @NonNull Instant instant,
             @NonNull ZoneId zone) {
-        Almanac almanac = Almanac.at(latitude, longitude, instant, zone);
+        Almanac almanac = Almanac.at(observer, instant, zone);
 
         if (almanac == null) {
             return null;
@@ -171,9 +173,8 @@ public final class SunPath {
      */
     private static final class Almanac {
 
-        private final double latitude;
-
-        private final double longitude;
+        @NonNull
+        private final Observer observer;
 
         @NonNull
         private final ZonedDateTime highNoon;
@@ -193,21 +194,20 @@ public final class SunPath {
          *         is no day here to be the morning and evening of.
          */
         @Nullable
-        static Almanac at(double latitude, double longitude, @NonNull Instant instant,
+        static Almanac at(@NonNull Observer observer, @NonNull Instant instant,
                 @NonNull ZoneId zone) {
-            ZonedDateTime highNoon = observedFrom(latitude, longitude)
+            ZonedDateTime highNoon = observedFrom(observer)
                     .on(instant.atZone(zone).toLocalDate())
                     .timezone(zone)
                     .forward()
                     .execute()
                     .getNoon();
 
-            return highNoon == null ? null : new Almanac(latitude, longitude, highNoon);
+            return highNoon == null ? null : new Almanac(observer, highNoon);
         }
 
-        private Almanac(double latitude, double longitude, @NonNull ZonedDateTime highNoon) {
-            this.latitude = latitude;
-            this.longitude = longitude;
+        private Almanac(@NonNull Observer observer, @NonNull ZonedDateTime highNoon) {
+            this.observer = observer;
             this.highNoon = highNoon;
         }
 
@@ -235,7 +235,7 @@ public final class SunPath {
          */
         @NonNull
         private SunTimes.Parameters search(@NonNull SunTimes.Twilight twilight) {
-            return observedFrom(latitude, longitude).on(highNoon).twilight(twilight);
+            return observedFrom(observer).on(highNoon).twilight(twilight);
         }
 
         /**
@@ -244,8 +244,8 @@ public final class SunPath {
          * about whenever the sun next obliges.
          */
         @NonNull
-        private static SunTimes.Parameters observedFrom(double latitude, double longitude) {
-            return SunTimes.compute().at(latitude, longitude).oneDay();
+        private static SunTimes.Parameters observedFrom(@NonNull Observer observer) {
+            return SunTimes.compute().at(observer.latitude(), observer.longitude()).oneDay();
         }
     }
 

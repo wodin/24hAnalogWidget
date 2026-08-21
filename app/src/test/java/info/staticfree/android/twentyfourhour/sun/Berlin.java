@@ -11,6 +11,8 @@ import java.time.LocalTime;
 import java.time.Month;
 import java.time.ZoneId;
 
+import info.staticfree.android.twentyfourhour.observer.Observer;
+
 /**
  * The place and the day the sun tests start from.
  *
@@ -55,7 +57,7 @@ final class Berlin {
      */
     @NonNull
     static SunPath sunPath() {
-        SunPath path = SunPath.on(LATITUDE, LONGITUDE, SOMETIME_THAT_DAY, ZONE);
+        SunPath path = SunPath.on(new Observer(LATITUDE, LONGITUDE), SOMETIME_THAT_DAY, ZONE);
 
         assertNotNull("Berlin in February has a sunrise, a sunset and all three twilights", path);
 

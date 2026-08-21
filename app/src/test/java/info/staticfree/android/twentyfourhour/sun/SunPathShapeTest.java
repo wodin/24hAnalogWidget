@@ -15,6 +15,8 @@ import java.time.Month;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
+import info.staticfree.android.twentyfourhour.observer.Observer;
+
 /**
  * The shape of a sun's day: what is true of any such day anywhere, whatever the
  * numbers turn out to be. Nothing here is read off what the library returns, so
@@ -119,8 +121,7 @@ public class SunPathShapeTest {
      */
     @Test
     public void aPlaceMissingOneTwilightHasNoPathAtAll() {
-        double latitude = 51.5074;
-        double longitude = -0.1278;
+        Observer london = new Observer(51.5074, -0.1278);
         ZoneId zone = ZoneId.of("Europe/London");
         Instant solstice = LocalDate.of(2026, Month.JUNE, 21)
                 .atTime(LocalTime.NOON)
@@ -129,7 +130,7 @@ public class SunPathShapeTest {
 
         assertNull("London in late June has a sunrise and a sunset but never a night dark " +
                         "enough for astronomical twilight, so there is no whole day to draw",
-                SunPath.on(latitude, longitude, solstice, zone));
+                SunPath.on(london, solstice, zone));
     }
 
     private static void assertEveryMomentBelongsTo(@NonNull ZoneId zone, @NonNull LocalDate date,

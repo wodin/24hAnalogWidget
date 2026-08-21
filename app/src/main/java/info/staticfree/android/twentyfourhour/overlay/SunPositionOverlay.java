@@ -39,6 +39,7 @@ import java.time.ZonedDateTime;
 
 import info.staticfree.android.twentyfourhour.R;
 import info.staticfree.android.twentyfourhour.dial.Dial;
+import info.staticfree.android.twentyfourhour.observer.Observer;
 import info.staticfree.android.twentyfourhour.sun.SunPath;
 
 /**
@@ -131,7 +132,8 @@ public class SunPositionOverlay implements DialOverlay {
             return;
         }
 
-        SunPath path = SunPath.on(location.getLatitude(), location.getLongitude(), instant, zone);
+        SunPath path = SunPath.on(new Observer(location.getLatitude(), location.getLongitude()),
+                instant, zone);
 
         if (path == null) {
             Log.w(TAG, "no sun path at " + location + "; drawing the placeholder instead");

@@ -11,6 +11,8 @@ import java.time.LocalTime;
 import java.time.Month;
 import java.time.ZoneId;
 
+import info.staticfree.android.twentyfourhour.observer.Observer;
+
 /**
  * {@link Berlin}'s mirror: the same kind of day, on the other side of the
  * equator and the other side of Greenwich.
@@ -48,7 +50,7 @@ final class BuenosAires {
 
     @NonNull
     static SunPath sunPath() {
-        SunPath path = SunPath.on(LATITUDE, LONGITUDE, SOMETIME_THAT_DAY, ZONE);
+        SunPath path = SunPath.on(new Observer(LATITUDE, LONGITUDE), SOMETIME_THAT_DAY, ZONE);
 
         assertNotNull("Buenos Aires in August has a sunrise, a sunset and all three twilights",
                 path);

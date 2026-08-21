@@ -11,6 +11,8 @@ import java.time.LocalTime;
 import java.time.Month;
 import java.time.ZoneId;
 
+import info.staticfree.android.twentyfourhour.observer.Observer;
+
 /**
  * A place whose sun does not fit inside one local date.
  *
@@ -42,7 +44,7 @@ final class Kashgar {
 
     @NonNull
     static SunPath sunPath() {
-        SunPath path = SunPath.on(LATITUDE, LONGITUDE, SOMETIME_THAT_DAY, ZONE);
+        SunPath path = SunPath.on(new Observer(LATITUDE, LONGITUDE), SOMETIME_THAT_DAY, ZONE);
 
         assertNotNull("Kashgar on the solstice has a sunrise, a sunset and all three twilights",
                 path);

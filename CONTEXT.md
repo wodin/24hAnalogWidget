@@ -3,7 +3,7 @@
 A homescreen widget that draws a 24-hour analog clock. The hour hand turns once
 per day rather than twice, with noon at the top and midnight at the bottom, so
 it traces the sun's arc across the sky. The dial is designed to shade the hours
-the sun spends below the horizon at the viewer's location.
+the sun spends below the horizon where the viewer stands.
 
 ## The clock
 
@@ -40,8 +40,8 @@ _Avoid_: sun angle, solar position, SunPosition
 
 **Sun path**:
 The sun's whole day at one place: sunrise, sunset, the three twilights either
-side, and high noon. A Sun position is one point on it. A path needs a location,
-and not every location has one every day — London loses its astronomical
+side, and high noon. A Sun position is one point on it. A path needs an
+Observer, and not every place has one every day — London loses its astronomical
 twilight around midsummer. With no path, the dial draws the Placeholder instead.
 _Avoid_: sun times, solar events, ephemeris
 
@@ -57,9 +57,17 @@ fixed at the top of the dial, whereas high noon drifts with the date and with
 longitude within the timezone.
 _Avoid_: solar noon, midday, zenith
 
+**Observer**:
+Where the viewer stands, as a latitude and a longitude. The one thing a Sun path
+cannot be computed without, and the only thing about the viewer the dial knows.
+Not a Sun position, which is an angle on the dial rather than a place on the
+earth. A place and not a reading: it carries no accuracy and no age, so there is
+nothing to ask how stale it is.
+_Avoid_: location, coordinates, GPS
+
 **Placeholder**:
 The hatched shading over a nominal night, 18:00 through midnight to 06:00, drawn
-when no location is known. It means "the sun position is unknown", not "the sun
+when no Observer is known. It means "the sun position is unknown", not "the sun
 is down for these hours".
 _Avoid_: empty state, fallback, no-data tile
 
