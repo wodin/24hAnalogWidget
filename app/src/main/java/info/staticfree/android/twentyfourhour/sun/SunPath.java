@@ -24,21 +24,11 @@ package info.staticfree.android.twentyfourhour.sun;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.time.DateTimeException;
-import java.time.Duration;
+import org.shredzone.commons.suncalc.SunTimes;
+
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-import java.util.TimeZone;
-import java.util.function.Function;
-
-import uk.me.jstott.coordconv.LatitudeLongitude;
-import uk.me.jstott.sun.Sun;
-import uk.me.jstott.sun.Time;
 
 /**
  * The sun's whole day at one place: sunrise, sunset, the three twilights either
@@ -88,53 +78,54 @@ public final class SunPath {
      * is read in that same zone, so a path cannot be asked for one place and
      * read in another's terms.
      *
-     * @return {@code null} if this place has no such day — the sun never
-     *         crosses one of the horizons the path is defined by, or the
-     *         coordinates and the zone disagree badly enough to put a moment
-     *         outside the day. Both mean the same thing to a caller: there is
-     *         nothing to draw.
+     * <p><strong>The sun's day, not the calendar's.</strong> It is built
+     * outward from high noon — the crossings before it are the morning, the
+     * crossings after it are the evening — so a place whose sun runs late
+     * against its clock gets a day that is still in order, with its last
+     * moments dated to the day after the one asked about. Kashgar on the
+     * solstice is such a place; {@code SunPathShapeTest} holds an example.
+     *
+     * @return {@code null} if this place has no such day, meaning the sun does
+     *         not cross one of the four horizons a path is defined by — or, at
+     *         the poles in their dark half of the year, does not cross the
+     *         meridian either. A missing horizon needs nothing as exotic as a
+     *         polar circle: from about 48&deg; north or south the sun stops
+     *         falling a full 18&deg; below it around the summer solstice, so
+     *         London has no astronomical twilight in late June and no path here
+     *         either. All of it is one answer, because a caller has nothing to
+     *         draw either way.
      */
     @Nullable
     public static SunPath on(double latitude, double longitude, @NonNull Instant instant,
             @NonNull ZoneId zone) {
-        ZonedDateTime moment = instant.atZone(zone);
-        LocalDate date = moment.toLocalDate();
-        LatitudeLongitude place = new LatitudeLongitude(latitude, longitude);
+        Almanac almanac = Almanac.at(latitude, longitude, instant, zone);
 
-        // jsuntimes is a 2004 API: it takes a Calendar for the date, and then
-        // the zone and whether daylight saving applies again, separately. This
-        // is the only Calendar left in the app, and it leaves with the library.
-        Calendar calendar = GregorianCalendar.from(moment);
-        TimeZone timeZone = calendar.getTimeZone();
-        boolean daylightSaving = calendar.get(Calendar.DST_OFFSET) != 0;
-
-        // Four of Sun's five arguments never vary within a day, so they are
-        // bound once here and each call site below names only its event.
-        Function<SunEvent, ZonedDateTime> when =
-                event -> at(event.time(calendar, place, timeZone, daylightSaving), date, zone);
-
-        try {
-            ZonedDateTime sunrise = when.apply(Sun::sunriseTime);
-            ZonedDateTime sunset = when.apply(Sun::sunsetTime);
-
-            return new SunPath(when.apply(Sun::morningAstronomicalTwilightTime),
-                    when.apply(Sun::morningNauticalTwilightTime),
-                    when.apply(Sun::morningCivilTwilightTime), sunrise,
-                    highNoonBetween(sunrise, sunset), sunset,
-                    when.apply(Sun::eveningCivilTwilightTime),
-                    when.apply(Sun::eveningNauticalTwilightTime),
-                    when.apply(Sun::eveningAstronomicalTwilightTime));
-
-            // Not swallowed in error: throwing is how Sun says "no such day
-            // here", and a Time it does return but cannot place in one fails
-            // in LocalTime.of for the same reason. Neither is a fault to
-            // report, and the exception says nothing a caller could act on
-            // beyond the null. Whether that absence is worth mentioning is the
-            // caller's to decide, which is what keeps Android's Log out of a
-            // class that is otherwise assertable on a plain JVM.
-        } catch (IllegalArgumentException | DateTimeException e) {
+        if (almanac == null) {
             return null;
         }
+
+        ZonedDateTime morningAstronomicalTwilight = almanac.morning(SunTimes.Twilight.ASTRONOMICAL);
+        ZonedDateTime morningNauticalTwilight = almanac.morning(SunTimes.Twilight.NAUTICAL);
+        ZonedDateTime morningCivilTwilight = almanac.morning(SunTimes.Twilight.CIVIL);
+        ZonedDateTime sunrise = almanac.morning(SunTimes.Twilight.VISUAL);
+        ZonedDateTime sunset = almanac.evening(SunTimes.Twilight.VISUAL);
+        ZonedDateTime eveningCivilTwilight = almanac.evening(SunTimes.Twilight.CIVIL);
+        ZonedDateTime eveningNauticalTwilight = almanac.evening(SunTimes.Twilight.NAUTICAL);
+        ZonedDateTime eveningAstronomicalTwilight = almanac.evening(SunTimes.Twilight.ASTRONOMICAL);
+
+        // All nine or none. A latitude with a sunrise and a sunset but no
+        // astronomical twilight is a real place, and it draws the Placeholder
+        // rather than most of a day: this seam has no way to say "these eight",
+        // and inventing one would be answering a question nothing has asked.
+        if (anyMissing(morningAstronomicalTwilight, morningNauticalTwilight, morningCivilTwilight,
+                sunrise, sunset, eveningCivilTwilight, eveningNauticalTwilight,
+                eveningAstronomicalTwilight)) {
+            return null;
+        }
+
+        return new SunPath(morningAstronomicalTwilight, morningNauticalTwilight,
+                morningCivilTwilight, sunrise, almanac.highNoon(), sunset, eveningCivilTwilight,
+                eveningNauticalTwilight, eveningAstronomicalTwilight);
     }
 
     private SunPath(@NonNull ZonedDateTime morningAstronomicalTwilight,
@@ -155,62 +146,107 @@ public final class SunPath {
         this.eveningAstronomicalTwilight = eveningAstronomicalTwilight;
     }
 
-    /**
-     * High noon as this app has always meant it: the midpoint of sunrise and
-     * sunset. That is close to the sun's true transit but not the same moment.
-     *
-     * <p>The difference is <em>not</em> the equation of time, which this comment
-     * claimed until a test went looking: the equation of time moves the transit
-     * and both horizon crossings alike, so it cancels out of a midpoint exactly.
-     * What is left is that the sun's declination shifts between one crossing and
-     * the other, so the two are not symmetric about the transit. That is worth
-     * some 20 seconds at a temperate latitude away from the solstices, where
-     * declination moves fastest; {@code SunPathAlmanacTest} measures it.
-     */
-    @NonNull
-    private static ZonedDateTime highNoonBetween(@NonNull ZonedDateTime sunrise,
-            @NonNull ZonedDateTime sunset) {
-        return sunrise.plus(Duration.between(sunrise, sunset).dividedBy(2));
+    private static boolean anyMissing(@Nullable ZonedDateTime... moments) {
+        for (ZonedDateTime moment : moments) {
+            if (moment == null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
-     * Places one of jsuntimes' wall-clock times into the day that was asked
-     * about.
+     * One observer's one day, with everything that does not vary between
+     * questions bound once: where they stand, and the high noon their day is
+     * built outward from. Two questions remain — what the morning did, and what
+     * the evening did — each asked at whichever of the four horizons the caller
+     * names.
      *
-     * <p><strong>Asked about, not the day it falls on.</strong> A {@code Time}
-     * is hours, minutes and seconds with no date attached, so this can only
-     * assume. The assumption holds wherever the sun's whole day fits inside one
-     * local date, and fails where an evening twilight runs past local midnight
-     * — which a timezone wide for its longitude, or daylight saving, can do
-     * even at a temperate latitude. Such a moment is dated a day early.
-     *
-     * <p>Nothing is drawn wrongly by it: the painter reads only the wall-clock
-     * time and the dial wraps at midnight of its own accord. But this seam
-     * publishes dates, and for such a place the date is wrong. It is an
-     * artefact of the almanac behind it rather than of the idea; one that
-     * returns already-dated moments has nothing to assume.
-     *
-     * <p>Seconds are truncated, not rounded. jsuntimes reports them as a
-     * fraction and the sub-second part is a hundred-thousandth of a degree on
-     * the dial.
+     * <p>This is the boundary the library's vocabulary is translated at. Its
+     * {@code getNoon()} is the meridian transit, which is what this app calls
+     * <em>high noon</em>; its {@code Twilight.VISUAL} is the horizon crossing
+     * this app calls sunrise and sunset, refraction and the sun's disc
+     * included. Neither name gets out of this file.
      */
-    @NonNull
-    private static ZonedDateTime at(@NonNull Time time, @NonNull LocalDate date,
-            @NonNull ZoneId zone) {
-        return date.atTime(
-                        LocalTime.of(time.getHours(), time.getMinutes(), (int) time.getSeconds()))
-                .atZone(zone);
-    }
+    private static final class Almanac {
 
-    /**
-     * One of jsuntimes' eight event methods, which all share a shape the
-     * library never named. Goes when the library does.
-     */
-    @FunctionalInterface
-    private interface SunEvent {
+        private final double latitude;
+
+        private final double longitude;
+
         @NonNull
-        Time time(@NonNull Calendar calendar, @NonNull LatitudeLongitude place,
-                @NonNull TimeZone zone, boolean daylightSaving);
+        private final ZonedDateTime highNoon;
+
+        /**
+         * The almanac for this observer on the day containing {@code instant}
+         * read in {@code zone}, anchored on the first meridian crossing at or
+         * after local midnight.
+         *
+         * <p>Local midnight is the anchor because a day has to start somewhere
+         * and that is where the calendar says it does. Every other moment is
+         * then measured from the crossing rather than from midnight, which is
+         * what frees the rest of the day from the calendar's opinion.
+         *
+         * @return {@code null} where the sun does not cross the meridian at
+         *         all, which is the poles in their dark half of the year. There
+         *         is no day here to be the morning and evening of.
+         */
+        @Nullable
+        static Almanac at(double latitude, double longitude, @NonNull Instant instant,
+                @NonNull ZoneId zone) {
+            ZonedDateTime highNoon = observedFrom(latitude, longitude)
+                    .on(instant.atZone(zone).toLocalDate())
+                    .timezone(zone)
+                    .forward()
+                    .execute()
+                    .getNoon();
+
+            return highNoon == null ? null : new Almanac(latitude, longitude, highNoon);
+        }
+
+        private Almanac(double latitude, double longitude, @NonNull ZonedDateTime highNoon) {
+            this.latitude = latitude;
+            this.longitude = longitude;
+            this.highNoon = highNoon;
+        }
+
+        @NonNull
+        ZonedDateTime highNoon() {
+            return highNoon;
+        }
+
+        /** The last time the sun rose through {@code twilight} before high noon. */
+        @Nullable
+        ZonedDateTime morning(@NonNull SunTimes.Twilight twilight) {
+            return search(twilight).reverse().execute().getRise();
+        }
+
+        /** The first time the sun set through {@code twilight} after high noon. */
+        @Nullable
+        ZonedDateTime evening(@NonNull SunTimes.Twilight twilight) {
+            return search(twilight).forward().execute().getSet();
+        }
+
+        /**
+         * A fresh search of the day either side of high noon. Fresh because the
+         * builder carries the query's state, so one shared between two questions
+         * would answer the second with the first's direction.
+         */
+        @NonNull
+        private SunTimes.Parameters search(@NonNull SunTimes.Twilight twilight) {
+            return observedFrom(latitude, longitude).on(highNoon).twilight(twilight);
+        }
+
+        /**
+         * The half of a query that is the observer rather than the question:
+         * where they stand, and that they are asking about a day rather than
+         * about whenever the sun next obliges.
+         */
+        @NonNull
+        private static SunTimes.Parameters observedFrom(double latitude, double longitude) {
+            return SunTimes.compute().at(latitude, longitude).oneDay();
+        }
     }
 
     @NonNull

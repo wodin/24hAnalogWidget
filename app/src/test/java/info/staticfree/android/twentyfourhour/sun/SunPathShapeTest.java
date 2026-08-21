@@ -1,11 +1,18 @@
 package info.staticfree.android.twentyfourhour.sun;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import org.junit.Before;
+import androidx.annotation.NonNull;
+
 import org.junit.Test;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.Month;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 /**
@@ -18,15 +25,12 @@ import java.time.ZonedDateTime;
  * holds however inaccurate the almanac behind it is, so this one cannot notice
  * an hour's error and must not be asked to.
  *
- * <p>{@link Berlin} says which day is under the glass, and why that one.
+ * <p>Two places, for two different reasons. {@link Berlin} is the day the sun
+ * tests ask their questions of, temperate and unremarkable. {@link Kashgar} is
+ * here only because its day overruns local midnight, which is the one thing
+ * Berlin's cannot show.
  */
 public class SunPathShapeTest {
-    private SunPath path;
-
-    @Before
-    public void computeTheDay() {
-        path = Berlin.sunPath();
-    }
 
     /**
      * The whole day in order. Sunrise before high noon before sunset is the
@@ -36,6 +40,89 @@ public class SunPathShapeTest {
      */
     @Test
     public void theDayRunsInOrder() {
+        assertRunsInOrder(Berlin.sunPath());
+    }
+
+    /**
+     * A path is one place's one day, so every moment on it belongs to the date
+     * asked for, read in the zone asked for. This is what says the moments came
+     * back in the caller's terms rather than in the library's.
+     *
+     * <p>The date half of that is true of this place on this day and not of
+     * everywhere — see {@link #aDayMayReachPastLocalMidnight()}.
+     */
+    @Test
+    public void everyMomentBelongsToTheDayAndZoneAskedFor() {
+        for (ZonedDateTime moment : allNine(Berlin.sunPath())) {
+            assertEquals(Berlin.ZONE, moment.getZone());
+            assertEquals(Berlin.DATE, moment.toLocalDate());
+        }
+    }
+
+    /**
+     * A day is the sun's, not the calendar's: where the two disagree, the
+     * ordering above still holds. Kashgar's solstice runs some three hours late
+     * against its clock, so the last of its evening twilight falls after local
+     * midnight — and a path that dated its moments by the day it was asked
+     * about, rather than by the day the sun actually has, would put that moment
+     * twenty-four hours early and break the order.
+     */
+    @Test
+    public void aDayThatOverrunsMidnightStillRunsInOrder() {
+        assertRunsInOrder(Kashgar.sunPath());
+    }
+
+    /**
+     * The same fact stated directly, so that a failure says which half is
+     * wrong. Every moment is still read in the zone that was asked for; what
+     * moves is the date, and only for the moment that has actually crossed
+     * into the next one.
+     */
+    @Test
+    public void aDayMayReachPastLocalMidnight() {
+        SunPath path = Kashgar.sunPath();
+
+        for (ZonedDateTime moment : allNine(path)) {
+            assertEquals(Kashgar.ZONE, moment.getZone());
+        }
+
+        assertEquals("sunrise belongs to the day asked about", Kashgar.DATE,
+                path.sunrise().toLocalDate());
+        assertEquals("sunset belongs to the day asked about", Kashgar.DATE,
+                path.sunset().toLocalDate());
+        assertEquals("the evening's astronomical twilight ends after local midnight",
+                Kashgar.DATE.plusDays(1), path.eveningAstronomicalTwilight().toLocalDate());
+    }
+
+    /**
+     * All nine moments or none. A place can have a sunrise and a sunset and
+     * still be missing a twilight: from about 48&deg; north the sun stops
+     * falling a full 18&deg; below the horizon around the June solstice, so
+     * London has no astronomical twilight from roughly mid-May to late July
+     * while its days are otherwise ordinary.
+     *
+     * <p>The path is null there rather than partial, because this seam has no
+     * way to say "these eight" and the painter has nothing to do with the
+     * answer but draw the Placeholder. That is a real behaviour and a
+     * surprising one — London is not the Arctic — so it is asserted rather
+     * than left to be discovered by whoever first lights this feature up.
+     */
+    @Test
+    public void aPlaceMissingOneTwilightHasNoPathAtAll() {
+        double latitude = 51.5074;
+        double longitude = -0.1278;
+        ZoneId zone = ZoneId.of("Europe/London");
+        Instant solstice = LocalDate.of(2026, Month.JUNE, 21)
+                .atTime(LocalTime.NOON)
+                .atZone(zone)
+                .toInstant();
+
+        assertNull("London in late June has a sunrise and a sunset but never a night dark " +
+                        "enough for astronomical twilight, so there is no whole day to draw",
+                SunPath.on(latitude, longitude, solstice, zone));
+    }
+
+    private static void assertRunsInOrder(@NonNull SunPath path) {
         assertInOrder("morning astronomical twilight", path.morningAstronomicalTwilight(),
                 "morning nautical twilight", path.morningNauticalTwilight());
         assertInOrder("morning nautical twilight", path.morningNauticalTwilight(),
@@ -52,25 +139,8 @@ public class SunPathShapeTest {
                 "evening astronomical twilight", path.eveningAstronomicalTwilight());
     }
 
-    /**
-     * A path is one place's one day, so every moment on it belongs to the date
-     * asked for, read in the zone asked for. This is what says the moments came
-     * back in the caller's terms rather than in the library's.
-     *
-     * <p>The date half of that is true of this place on this day and not of
-     * everywhere: see {@code SunPath.at}, which can only assume a date because
-     * the almanac behind it reports none. A place whose evening twilight runs
-     * past local midnight would fail here, and would be right to.
-     */
-    @Test
-    public void everyMomentBelongsToTheDayAndZoneAskedFor() {
-        for (ZonedDateTime moment : allNine()) {
-            assertEquals(Berlin.ZONE, moment.getZone());
-            assertEquals(Berlin.DATE, moment.toLocalDate());
-        }
-    }
-
-    private ZonedDateTime[] allNine() {
+    @NonNull
+    private static ZonedDateTime[] allNine(@NonNull SunPath path) {
         return new ZonedDateTime[] {path.morningAstronomicalTwilight(),
                 path.morningNauticalTwilight(), path.morningCivilTwilight(), path.sunrise(),
                 path.highNoon(), path.sunset(), path.eveningCivilTwilight(),

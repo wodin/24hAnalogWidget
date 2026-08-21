@@ -55,8 +55,10 @@ only uses cached locations acquired by other apps.
 Source
 ------
 
-This code depends on [jSunTimes](http://www.jstott.me.uk/jsuntimes/), which is
-included in the source tree in both byte-compiled form as well as source.
+The sun's times come from
+[commons-suncalc](https://shredzone.org/maven/commons-suncalc/), resolved from
+Maven Central like every other dependency. It replaced jSunTimes, which used to
+be carried in the source tree as a jar.
 
 License
 -------

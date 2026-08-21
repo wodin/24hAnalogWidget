@@ -68,9 +68,8 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
-    // jsuntimes: local jar, no upstream coordinates.
-    implementation(fileTree("libs") { include("*.jar") })
     implementation(libs.androidx.annotation)
+    implementation(libs.commons.suncalc)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

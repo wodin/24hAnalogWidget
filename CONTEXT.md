@@ -44,9 +44,9 @@ darkens by degrees rather than at a single edge.
 _Avoid_: dusk, dawn, golden hour
 
 **High noon**:
-The moment the sun stands highest, halfway between sunrise and sunset. Not
-Noon — noon is fixed at the top of the dial, whereas high noon drifts with the
-date and with longitude within the timezone.
+The moment the sun stands highest, crossing the meridian. Not Noon — noon is
+fixed at the top of the dial, whereas high noon drifts with the date and with
+longitude within the timezone.
 _Avoid_: solar noon, midday, zenith
 
 **Placeholder**:

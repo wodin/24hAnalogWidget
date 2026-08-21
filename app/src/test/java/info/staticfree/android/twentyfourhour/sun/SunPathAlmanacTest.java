@@ -67,7 +67,7 @@ import java.time.ZonedDateTime;
  * run and not by seeing which one the code agreed with.
  *
  * <p><strong>It is also load-bearing, and that must be said too.</strong> Had
- * sunrise-sunset.org been used for all nine, sunrise would be 156 seconds out
+ * sunrise-sunset.org been used for all nine, sunrise would be 133 seconds out
  * and this test would fail. The case for MET Norway above is why it is not the
  * wrong call — but a reader deserves to know that the green here rests on it,
  * rather than discovering it by changing one constant.
@@ -98,11 +98,7 @@ public class SunPathAlmanacTest {
     private static final OffsetDateTime MET_NORWAY_SUNSET =
             OffsetDateTime.parse("2026-02-15T17:18+01:00");
 
-    /**
-     * MET Norway's {@code solarnoon}: the sun's true transit of the meridian.
-     * See {@link #highNoonIsNearTheSolarTransitButIsNotIt()} — the code does not
-     * currently compute this quantity.
-     */
+    /** MET Norway's {@code solarnoon}: the sun's true transit of the meridian. */
     private static final OffsetDateTime MET_NORWAY_SOLAR_TRANSIT =
             OffsetDateTime.parse("2026-02-15T12:20+01:00");
 
@@ -131,14 +127,13 @@ public class SunPathAlmanacTest {
     private static final OffsetDateTime DOT_ORG_EVENING_ASTRONOMICAL_TWILIGHT =
             OffsetDateTime.parse("2026-02-15T18:13:27+00:00");
 
-    /** See <em>Why two minutes</em> above. */
-    private static final Duration TOLERANCE = Duration.ofMinutes(2);
-
     /**
-     * High noon's own, and looser, because it is not being compared against
-     * itself. See {@link #highNoonIsNearTheSolarTransitButIsNotIt()}.
+     * See <em>Why two minutes</em> above. One tolerance for all nine moments,
+     * high noon included: it used to carry a third minute for the gap between
+     * a sunrise/sunset midpoint and a true transit, and it no longer computes
+     * the former.
      */
-    private static final Duration HIGH_NOON_TOLERANCE = Duration.ofMinutes(3);
+    private static final Duration TOLERANCE = Duration.ofMinutes(2);
 
     private SunPath path;
 
@@ -170,32 +165,26 @@ public class SunPathAlmanacTest {
     }
 
     /**
-     * High noon is measured against the solar transit, which is <em>not the same
-     * moment</em> and is why this assertion is separate and its tolerance looser.
+     * High noon is the solar transit, and is measured against a published one.
      *
-     * <p>This app has always meant by high noon the midpoint of sunrise and
-     * sunset. The transit is when the sun actually crosses the meridian. They
-     * drift apart because the sun's declination moves between one horizon
-     * crossing and the other, so the two crossings are not symmetric about the
-     * transit — worth some 20 seconds here. Note that this is <em>not</em> the
-     * equation of time, which shifts the transit and both crossings alike and so
-     * cancels out of a midpoint exactly.
+     * <p>It has not always been. Until commons-suncalc replaced jsuntimes this
+     * app took high noon to be the midpoint of sunrise and sunset, which is a
+     * near neighbour of the transit rather than the same moment: the sun's
+     * declination moves between one horizon crossing and the other, so the two
+     * crossings are not symmetric about the transit. That was worth some 20
+     * seconds here — and it is <em>not</em> the equation of time, which shifts
+     * the transit and both crossings alike and so cancels out of a midpoint
+     * exactly. The midpoint measured 68 seconds after MET Norway's transit;
+     * the transit itself measures 50, of a piece with the other eight moments.
      *
-     * <p>The extra minute over {@link #TOLERANCE} is that gap, rounded up to a
-     * whole minute; the other two are the same measurement spread as everything
-     * else. Measured, high noon lands 68 seconds after MET Norway's transit —
-     * about 20 of definition and the rest the same lag the eight other moments
-     * show. Recorded so the third minute cannot outlive the reason for it.
-     *
-     * <p>Replacing the almanac behind this replaces the midpoint with a genuine
-     * transit — a change in what the code <em>means</em>, not in how accurately
-     * it means it. At that point the definitional minute is no longer owed and
-     * this tolerance should come back down to {@link #TOLERANCE}.
+     * <p>So this test is still separate, but for a smaller reason: it is the
+     * one moment MET Norway publishes that the six twilights cannot corroborate,
+     * and it is where a change in what the code <em>means</em> would show up
+     * rather than a change in how accurately it means it.
      */
     @Test
-    public void highNoonIsNearTheSolarTransitButIsNotIt() {
-        assertPublished("high noon", MET_NORWAY_SOLAR_TRANSIT, path.highNoon(),
-                HIGH_NOON_TOLERANCE);
+    public void highNoonIsTheSolarTransit() {
+        assertPublished("high noon", MET_NORWAY_SOLAR_TRANSIT, path.highNoon(), TOLERANCE);
     }
 
     private static void assertPublished(String moment, OffsetDateTime published,
