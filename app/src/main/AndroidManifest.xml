@@ -1,9 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!--
+        Coarse and not fine: coarsening to a ~2 km grid moves the sun by well
+        under a minute, which is nothing beside the two-to-seven-minute age of
+        the fix itself, so fine would be asking for precision the dial cannot
+        show. Background as well as coarse, because a widget's redraw runs at a
+        process importance the platform treats as "nobody is looking" - and a
+        foreground-only grant is refused there silently, with checkSelfPermission
+        still answering GRANTED. Both are granted by hand with adb on the one
+        phone this fork is built for, and LastKnownObserver logs whichever of
+        them is missing.
+
+        Neither is ever used to ask the phone where it is. The only call made is
+        getLastKnownLocation on the passive provider, which reads a cache some
+        other app filled and cannot power a radio.
+    -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="com.google.android.permission.PROVIDE_BACKGROUND" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <uses-feature
         android:name="android.hardware.location"

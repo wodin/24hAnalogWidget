@@ -84,8 +84,9 @@ public final class LastKnownObserver {
             fix = context.getSystemService(LocationManager.class)
                     .getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
         } catch (SecurityException refused) {
-            Log.w(TAG, "no observer: the read was refused outright, so neither "
-                    + "ACCESS_COARSE_LOCATION nor ACCESS_FINE_LOCATION is granted. "
+            Log.w(TAG, "no observer: the read was refused outright, so "
+                    + "ACCESS_COARSE_LOCATION is not granted — it is the only "
+                    + "location permission this app declares that can carry a read. "
                     + "adb shell pm grant " + context.getPackageName()
                     + " android.permission.ACCESS_COARSE_LOCATION");
 

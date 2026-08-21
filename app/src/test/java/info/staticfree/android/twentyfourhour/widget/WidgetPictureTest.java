@@ -331,8 +331,8 @@ public class WidgetPictureTest {
     }
 
     /**
-     * The picture for a widget nobody knows the position of, which is what every
-     * caller passes until the receiver learns to read one.
+     * The picture for a widget nobody knows the position of, which is what the
+     * receiver hands over whenever the phone has no fix to give it.
      */
     @NonNull
     private static ImageView inflate(@NonNull Bundle options) {

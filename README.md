@@ -6,12 +6,13 @@ Noon is at the top, so that the hour hand mimics the path of the sun.
 
 ![screenshot of widget](extra/sshot02.png)
 
-The dial is also designed to show when the sun rises and sets at your location.
-
-**That part does not work.** Nothing in the phone widget ever supplies a
-location, so the dial always draws the hatched "no location" placeholder instead
-of a real sun position. This is true of upstream too — it is not a regression in
-this fork — and wiring it up is later work.
+The dial also shows when the sun rises and sets where you are standing. It works
+out where that is from the last fix the phone happens to have cached, so the two
+permissions below have to be granted before it can draw a real sun path. Without
+them it draws the hatched Placeholder instead, which means "the sun position is
+unknown" rather than "the sun is down". It draws that too on the days a place
+has no whole sun path to show — London, for one, loses its astronomical twilight
+around midsummer.
 
 See [CONTEXT.md](CONTEXT.md) for the vocabulary the code uses.
 
@@ -47,10 +48,20 @@ already be present locally.
 Permissions
 -----------
 
-The manifest requests the two location permissions, but nothing reads location —
-see above. They are vestigial until the sunrise/sunset feature is wired up. Even
-then it will not impact battery life, as it never actively requests location; it
-only uses cached locations acquired by other apps.
+The manifest requests `ACCESS_COARSE_LOCATION` and `ACCESS_BACKGROUND_LOCATION`,
+and the sun path needs both. A widget redraws at a process importance the
+platform treats as "nobody is looking", where a foreground-only grant is refused
+without a word — so coarse alone leaves the dial hatched exactly when it is on
+screen and nobody has opened the app.
+
+Neither permission is ever used to ask the phone where it is. The only call the
+app makes is `getLastKnownLocation` on the passive provider, which reads a fix
+some other app has already paid for and cannot power a radio, so this costs no
+battery. Coarse rather than fine because coarse is enough: a ~2 km grid moves
+sunrise by seconds.
+
+This fork is sideloaded, so both are granted by hand rather than asked for. If
+the sun goes missing, `logcat` says which of them is the one that is absent.
 
 Source
 ------

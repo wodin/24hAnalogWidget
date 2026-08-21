@@ -22,6 +22,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 
+import info.staticfree.android.twentyfourhour.observer.LastKnownObserver;
+import info.staticfree.android.twentyfourhour.observer.Observer;
 import info.staticfree.android.twentyfourhour.widget.Tick;
 import info.staticfree.android.twentyfourhour.widget.WidgetPicture;
 
@@ -72,15 +74,26 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
      * <p>A picture each, rather than one built and shown on every id: the ids in
      * one update are separate widgets in cells of their own sizes, and a picture
      * can only answer to one of them.
+     *
+     * <p>The observer, though, is read once and shared. It is a property of the
+     * phone rather than of a cell, so a read per id would ask the same question
+     * as many times as the user happens to have pinned widgets — and would let
+     * two dials on one screen disagree about where they are being looked at
+     * from, if a fix landed between them. This is also the whole of the read:
+     * {@link LastKnownObserver} is the only Android-flavoured call the sun
+     * needs, and it lives here beside {@code Tick} and {@code AppWidgetManager}
+     * rather than inside the assembler or, worse, inside a draw.
      */
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         Tick.schedule(context);
 
+        final Observer observer = LastKnownObserver.read(context);
+
         for (int appWidgetId : appWidgetIds) {
             appWidgetManager.updateAppWidget(appWidgetId,
                     WidgetPicture.build(context, appWidgetManager.getAppWidgetOptions(appWidgetId),
-                            null));
+                            observer));
         }
     }
 
@@ -102,6 +115,12 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
      * case an update does not already cover — it is here so that <em>every path
      * that redraws the widget schedules the next redraw</em> holds without an
      * exception a reader would have to check.
+     *
+     * <p>And reads the observer, because a redraw that skipped the read would
+     * hand the picture a null and paint the Placeholder over a sun the user
+     * could see a moment ago, purely because they dragged a corner. One read
+     * rather than {@link #onUpdate}'s one-for-many, there being one widget
+     * here.
      */
     @Override
     public void onAppWidgetOptionsChanged(Context context, AppWidgetManager appWidgetManager,
@@ -110,7 +129,9 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
 
         Tick.schedule(context);
 
+        final Observer observer = LastKnownObserver.read(context);
+
         appWidgetManager.updateAppWidget(appWidgetId,
-                WidgetPicture.build(context, newOptions, null));
+                WidgetPicture.build(context, newOptions, observer));
     }
 }
