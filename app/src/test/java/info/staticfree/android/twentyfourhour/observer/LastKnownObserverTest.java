@@ -1,9 +1,9 @@
 package info.staticfree.android.twentyfourhour.observer;
 
+import static info.staticfree.android.twentyfourhour.observer.Fixes.cacheAPassiveFixAt;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.robolectric.Shadows.shadowOf;
 
 import android.content.Context;
 import android.location.Location;
@@ -68,7 +68,7 @@ public class LastKnownObserverTest {
     @Test
     public void aCachedPassiveFixIsWhereTheObserverStands() {
         Observer expected = BuenosAires.observer();
-        cache(fixAt(expected));
+        cacheAPassiveFixAt(context(), expected);
 
         Observer observed = LastKnownObserver.read(context());
 
@@ -107,7 +107,7 @@ public class LastKnownObserverTest {
     @Test
     @Config(shadows = ShadowRefusedLocationManager.class)
     public void aRefusedReadIsNoObserver() {
-        cache(fixAt(BuenosAires.observer()));
+        cacheAPassiveFixAt(context(), BuenosAires.observer());
 
         assertNull("a refused read should yield no observer rather than throw",
                 LastKnownObserver.read(context()));
@@ -129,20 +129,6 @@ public class LastKnownObserverTest {
                     + "android.permission.ACCESS_COARSE_LOCATION or "
                     + "android.permission.ACCESS_FINE_LOCATION.");
         }
-    }
-
-    @NonNull
-    private static Location fixAt(@NonNull Observer observer) {
-        Location fix = new Location(LocationManager.PASSIVE_PROVIDER);
-        fix.setLatitude(observer.latitude());
-        fix.setLongitude(observer.longitude());
-
-        return fix;
-    }
-
-    private static void cache(@NonNull Location fix) {
-        shadowOf(context().getSystemService(LocationManager.class))
-                .simulateLocation(LocationManager.PASSIVE_PROVIDER, fix);
     }
 
     @NonNull

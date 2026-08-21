@@ -1,5 +1,12 @@
 package info.staticfree.android.twentyfourhour;
 
+import static info.staticfree.android.twentyfourhour.dial.Shading.AFTERNOON_FROM;
+import static info.staticfree.android.twentyfourhour.dial.Shading.AFTERNOON_TO;
+import static info.staticfree.android.twentyfourhour.dial.Shading.A_QUARTER_OF_THE_WEDGE;
+import static info.staticfree.android.twentyfourhour.dial.Shading.SMALL_HOURS_FROM;
+import static info.staticfree.android.twentyfourhour.dial.Shading.SMALL_HOURS_TO;
+import static info.staticfree.android.twentyfourhour.dial.Shading.percentageDarkerIn;
+import static info.staticfree.android.twentyfourhour.observer.Fixes.cacheAPassiveFixAt;
 import static info.staticfree.android.twentyfourhour.widget.Alarms.only;
 import static info.staticfree.android.twentyfourhour.widget.Alarms.operationOf;
 import static info.staticfree.android.twentyfourhour.widget.Alarms.scheduled;
@@ -19,7 +26,9 @@ import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
@@ -27,6 +36,8 @@ import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
 import org.robolectric.shadows.ShadowAlarmManager;
 
+import info.staticfree.android.twentyfourhour.dial.Shading;
+import info.staticfree.android.twentyfourhour.sun.BuenosAires;
 import info.staticfree.android.twentyfourhour.widget.Tick;
 
 /**
@@ -40,8 +51,8 @@ import info.staticfree.android.twentyfourhour.widget.Tick;
  * it — belongs to {@code WidgetPictureTest}. Both answer without a broadcast.
  * Left here is only what needs one: that an update arms a tick and draws every
  * id it names, that a resize redraws the one it names, that the last widget
- * leaving stops the clock, and that the tick's own broadcast comes back round to
- * a redraw.
+ * leaving stops the clock, that the tick's own broadcast comes back round to a
+ * redraw, and that the place the phone last saw itself reaches the picture.
  *
  * <p>A fresh receiver per delivery, deliberately: Android constructs one for
  * each broadcast and discards it afterwards, so a receiver that remembered
@@ -51,6 +62,14 @@ import info.staticfree.android.twentyfourhour.widget.Tick;
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "xhdpi")
 public class TwentyFourHourClockWidgetResizableTest {
+
+    /**
+     * Pinned for the two observer tests below, and on the class because a rule
+     * cannot be anywhere else. Nothing else here reads a zone — a redraw is a
+     * redraw in any of them.
+     */
+    @Rule
+    public final TestRule dialsZone = Shading.inTheDialsZone();
 
     /**
      * The tick is armed by an update rather than by {@code onEnabled}, so that
@@ -212,6 +231,59 @@ public class TwentyFourHourClockWidgetResizableTest {
     }
 
     /**
+     * The receiver reads where the phone last saw itself and hands it to the
+     * picture, which is the one line this whole feature is: before it, the
+     * widget built an overlay and told it nothing, so it had never in its life
+     * drawn anything but the Placeholder.
+     *
+     * <p>Here rather than in {@code WidgetPictureTest} because that test can
+     * only hand {@code build} an Observer itself, and so passes just as well
+     * against a receiver that passes {@code null} forever. Nothing short of a
+     * delivered broadcast can say that the read happens at all — which is
+     * exactly this file's charter, and was <strong>measured</strong>: with the
+     * read replaced by {@code null}, every other test in the suite stays green
+     * and this one fails.
+     *
+     * <p>Read as the difference between two pictures the receiver drew, rather
+     * than against a control built here. An empty cache is a state the shadow
+     * starts in, so the first update is already the picture for nobody, and
+     * comparing the receiver's own two outputs keeps the claim about the
+     * receiver rather than about {@code WidgetPicture}. Which wedges disagree,
+     * and why they hold on any date, is {@link Shading}'s — as is the zone the
+     * rule above pins, without which they mean nothing.
+     *
+     * <p>One assertion per wedge and no more. That the shading lands on the
+     * city's own night to the degree is {@code SunPositionOverlayTest}'s
+     * question and {@code WidgetPictureTest}'s four-way probe; all that is owed
+     * here is that it moved, and moved in both directions — a picture that had
+     * simply stopped drawing the overlay would satisfy the first assertion and
+     * fail the second.
+     *
+     * <p>Both pictures are drawn at whatever {@link java.time.Instant#now()}
+     * each update reads, so a minute rolling over between two deliveries
+     * milliseconds apart moves the minute hand 6&deg;. It would have to move it
+     * into a wedge as well before either reading shifted, which is about one run
+     * in six thousand, and the failure is loud and settled by a rerun.
+     */
+    @Test
+    public void aWidgetIsDrawnForTheObserverThePhoneLastSaw() {
+        int widgetId = pinWidget();
+        deliver(update(widgetId));
+        Bitmap withAnEmptyCache = bitmapShownOn(widgetId);
+
+        cacheAPassiveFixAt(context(), BuenosAires.observer());
+        deliver(update(widgetId));
+
+        Bitmap withTheFix = bitmapShownOn(widgetId);
+        assertTrue("the nominal night's hatch should have lifted off the city's afternoon",
+                percentageDarkerIn(withAnEmptyCache, withTheFix, AFTERNOON_FROM, AFTERNOON_TO)
+                        > A_QUARTER_OF_THE_WEDGE);
+        assertTrue("and the city's own small hours should have been shaded instead",
+                percentageDarkerIn(withTheFix, withAnEmptyCache, SMALL_HOURS_FROM, SMALL_HOURS_TO)
+                        > A_QUARTER_OF_THE_WEDGE);
+    }
+
+    /**
      * Resizing a widget redraws it. Without this the host keeps showing the
      * bitmap it was last given, stretched to the new cell — which is exactly the
      * blur that sizing from the cell was meant to remove.
@@ -232,6 +304,41 @@ public class TwentyFourHourClockWidgetResizableTest {
                 bitmapShownOn(widgetId));
         assertEquals("the widget should be redrawn for its new 250dp cell", 500,
                 bitmapShownOn(widgetId).getWidth());
+    }
+
+    /**
+     * And a resize is drawn for the observer as well, so that <em>every path
+     * that redraws the widget reads where the phone is</em> has no exception
+     * either. Without it, dragging a corner would paint the Placeholder over a
+     * sun the user could see a moment ago.
+     *
+     * <p>Its own test rather than a third assertion on the update's, for the
+     * reason {@link #resizingAWidgetArmsTheTick} is its own: the two paths share
+     * no code, so a claim proved on one says nothing about the other.
+     * <strong>Measured</strong> the same way — with the resize's read alone
+     * replaced by {@code null}, only this test fails.
+     *
+     * <p>196dp because that is 392px at this density, which is the size
+     * {@link Shading}'s ring is measured against; the cell the update's test
+     * gets by default is the same square by the other road, the artwork's own
+     * intrinsic size.
+     */
+    @Test
+    public void resizingAWidgetDrawsItForTheObserverToo() {
+        int widgetId = pinWidget();
+        deliver(resize(widgetId, cell(196)));
+        Bitmap withAnEmptyCache = bitmapShownOn(widgetId);
+
+        cacheAPassiveFixAt(context(), BuenosAires.observer());
+        deliver(resize(widgetId, cell(196)));
+
+        Bitmap withTheFix = bitmapShownOn(widgetId);
+        assertTrue("the nominal night's hatch should have lifted off the city's afternoon",
+                percentageDarkerIn(withAnEmptyCache, withTheFix, AFTERNOON_FROM, AFTERNOON_TO)
+                        > A_QUARTER_OF_THE_WEDGE);
+        assertTrue("and the city's own small hours should have been shaded instead",
+                percentageDarkerIn(withTheFix, withAnEmptyCache, SMALL_HOURS_FROM, SMALL_HOURS_TO)
+                        > A_QUARTER_OF_THE_WEDGE);
     }
 
     /**
