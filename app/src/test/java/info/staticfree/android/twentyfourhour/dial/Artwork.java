@@ -52,6 +52,23 @@ public final class Artwork {
         return render.getPixel(render.getWidth() / 2 + dx, render.getHeight() / 2 + dy);
     }
 
+    /**
+     * The pixel {@code radius} pixels from the centre of a render, along a dial
+     * angle — clockwise from straight up, as {@link Dial#angleFor} measures it,
+     * in a bitmap whose y grows downward.
+     *
+     * <p>Here rather than in each test that wants it, now that two of them probe
+     * by angle. A sine that had drifted apart from its cosine in one of the two
+     * would be a dial that turned the other way in half the suite, and the tests
+     * that would have to catch it are the very ones the arithmetic lives in.
+     */
+    public static int probeAlong(@NonNull Bitmap render, double dialAngle, int radius) {
+        double radians = Math.toRadians(dialAngle);
+
+        return probe(render, (int) Math.round(radius * Math.sin(radians)),
+                (int) Math.round(-radius * Math.cos(radians)));
+    }
+
     /** The hands are painted a near-black #141414. */
     public static boolean isHand(int pixel) {
         return Color.alpha(pixel) == 255 && Color.red(pixel) < 0x40;

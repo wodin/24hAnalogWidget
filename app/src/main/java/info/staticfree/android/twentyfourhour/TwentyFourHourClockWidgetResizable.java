@@ -79,7 +79,8 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
 
         for (int appWidgetId : appWidgetIds) {
             appWidgetManager.updateAppWidget(appWidgetId,
-                    WidgetPicture.build(context, appWidgetManager.getAppWidgetOptions(appWidgetId)));
+                    WidgetPicture.build(context, appWidgetManager.getAppWidgetOptions(appWidgetId),
+                            null));
         }
     }
 
@@ -109,6 +110,7 @@ public class TwentyFourHourClockWidgetResizable extends AppWidgetProvider {
 
         Tick.schedule(context);
 
-        appWidgetManager.updateAppWidget(appWidgetId, WidgetPicture.build(context, newOptions));
+        appWidgetManager.updateAppWidget(appWidgetId,
+                WidgetPicture.build(context, newOptions, null));
     }
 }

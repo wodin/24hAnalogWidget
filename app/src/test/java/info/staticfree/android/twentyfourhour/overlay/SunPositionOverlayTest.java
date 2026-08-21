@@ -1,7 +1,7 @@
 package info.staticfree.android.twentyfourhour.overlay;
 
 import static info.staticfree.android.twentyfourhour.dial.Artwork.INTRINSIC_PX;
-import static info.staticfree.android.twentyfourhour.dial.Artwork.probe;
+import static info.staticfree.android.twentyfourhour.dial.Artwork.probeAlong;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -100,9 +100,9 @@ public class SunPositionOverlayTest {
 
     /**
      * The radii, in pixels from the centre, sampled along one dial angle. The
-     * shading is a wedge drawn from the centre out to the inset edge, which
-     * {@code setScale} puts at half the dial's radius by default: 98px of the
-     * 196px that is half of 392. Every pixel on one radius of a wedge is inside
+     * shading is a wedge drawn from the centre out to the inset edge, which the
+     * overlay's own default scale of one half puts at 98px of the 196px that is
+     * half of 392. Every pixel on one radius of a wedge is inside
      * it or outside it together.
      *
      * <p>A whole radius rather than a single pixel because the Placeholder is a
@@ -180,15 +180,10 @@ public class SunPositionOverlayTest {
      * differently from a wholesale one.
      */
     private static int paintedAlong(@NonNull Bitmap drawn, double dialAngle) {
-        // Clockwise from straight up, in a bitmap whose y grows downward.
-        double radians = Math.toRadians(dialAngle);
         int painted = 0;
 
         for (int radius = INNERMOST_PROBE_PX; radius <= OUTERMOST_PROBE_PX; radius++) {
-            int pixel = probe(drawn, (int) Math.round(radius * Math.sin(radians)),
-                    (int) Math.round(-radius * Math.cos(radians)));
-
-            if (Color.alpha(pixel) > 0) {
+            if (Color.alpha(probeAlong(drawn, dialAngle, radius)) > 0) {
                 painted++;
             }
         }

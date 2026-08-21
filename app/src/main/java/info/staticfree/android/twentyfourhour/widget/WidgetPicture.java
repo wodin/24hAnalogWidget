@@ -27,6 +27,7 @@ import android.util.TypedValue;
 import android.widget.RemoteViews;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -34,6 +35,7 @@ import java.time.ZoneId;
 import info.staticfree.android.twentyfourhour.ClockUtil;
 import info.staticfree.android.twentyfourhour.R;
 import info.staticfree.android.twentyfourhour.dial.Dial;
+import info.staticfree.android.twentyfourhour.observer.Observer;
 import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
 
 /**
@@ -60,10 +62,13 @@ public final class WidgetPicture {
      * @param options the host's description of this widget's cell, as
      *         {@link AppWidgetManager#getAppWidgetOptions} returns it. Empty is allowed and means
      *         the host has not sized this widget
+     * @param observer where the dial is being looked at from, or {@code null} if nobody knows —
+     *         which is the ordinary case and draws the Placeholder
      * @return {@link RemoteViews} the host can show, complete rather than a patch on an earlier one
      */
     @NonNull
-    public static RemoteViews build(@NonNull Context context, @NonNull Bundle options) {
+    public static RemoteViews build(@NonNull Context context, @NonNull Bundle options,
+            @Nullable Observer observer) {
         final RemoteViews picture = new RemoteViews(context.getPackageName(), R.layout.widget);
 
         // Every picture is a whole one, so the tap is attached every time rather
@@ -76,7 +81,7 @@ public final class WidgetPicture {
             picture.setOnClickPendingIntent(R.id.clock, tap);
         }
 
-        picture.setImageViewBitmap(R.id.clock, render(context, options));
+        picture.setImageViewBitmap(R.id.clock, render(context, options, observer));
 
         return picture;
     }
@@ -90,8 +95,12 @@ public final class WidgetPicture {
      * large and pixels were painted to be thrown away.
      */
     @NonNull
-    private static Bitmap render(@NonNull Context context, @NonNull Bundle options) {
-        final Dial dial = Dial.createStandard(context, new SunPositionOverlay(context));
+    private static Bitmap render(@NonNull Context context, @NonNull Bundle options,
+            @Nullable Observer observer) {
+        final SunPositionOverlay sun = new SunPositionOverlay(context);
+        sun.setObserver(observer);
+
+        final Dial dial = Dial.createStandard(context, sun);
         final int size = sideForCell(context, options, dial.getIntrinsicSize());
 
         final Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
