@@ -157,8 +157,15 @@ public final class SunPath {
 
     /**
      * High noon as this app has always meant it: the midpoint of sunrise and
-     * sunset. That is close to the sun's true transit but not the same moment,
-     * and the difference is the equation of time.
+     * sunset. That is close to the sun's true transit but not the same moment.
+     *
+     * <p>The difference is <em>not</em> the equation of time, which this comment
+     * claimed until a test went looking: the equation of time moves the transit
+     * and both horizon crossings alike, so it cancels out of a midpoint exactly.
+     * What is left is that the sun's declination shifts between one crossing and
+     * the other, so the two are not symmetric about the transit. That is worth
+     * some 20 seconds at a temperate latitude away from the solstices, where
+     * declination moves fastest; {@code SunPathAlmanacTest} measures it.
      */
     @NonNull
     private static ZonedDateTime highNoonBetween(@NonNull ZonedDateTime sunrise,

@@ -1,18 +1,11 @@
 package info.staticfree.android.twentyfourhour.sun;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.Month;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 /**
@@ -25,30 +18,14 @@ import java.time.ZonedDateTime;
  * holds however inaccurate the almanac behind it is, so this one cannot notice
  * an hour's error and must not be asked to.
  *
- * <p>Berlin in mid-February: a temperate latitude far enough from an equinox for
- * the nine moments to be plainly distinct, and far enough from a solstice for
- * all three twilights to actually occur. Its winter offset is UTC+1 and no
- * daylight saving transition is near, so the zone is a fixed hour off UTC
- * without being zero — enough to catch an offset dropped on the floor, not
- * enough to drag in an ambiguous hour.
+ * <p>{@link Berlin} says which day is under the glass, and why that one.
  */
 public class SunPathShapeTest {
-    private static final double BERLIN_LATITUDE = 52.5200;
-    private static final double BERLIN_LONGITUDE = 13.4050;
-    private static final ZoneId BERLIN = ZoneId.of("Europe/Berlin");
-    private static final LocalDate DATE = LocalDate.of(2026, Month.FEBRUARY, 15);
-
-    /** Any moment within the day; the path is the whole day that contains it. */
-    private static final Instant NOON = LocalDateTime.of(DATE, LocalTime.NOON)
-            .atZone(BERLIN).toInstant();
-
     private SunPath path;
 
     @Before
     public void computeTheDay() {
-        path = SunPath.on(BERLIN_LATITUDE, BERLIN_LONGITUDE, NOON, BERLIN);
-
-        assertNotNull("Berlin in February has a sunrise, a sunset and all three twilights", path);
+        path = Berlin.sunPath();
     }
 
     /**
@@ -88,8 +65,8 @@ public class SunPathShapeTest {
     @Test
     public void everyMomentBelongsToTheDayAndZoneAskedFor() {
         for (ZonedDateTime moment : allNine()) {
-            assertEquals(BERLIN, moment.getZone());
-            assertEquals(DATE, moment.toLocalDate());
+            assertEquals(Berlin.ZONE, moment.getZone());
+            assertEquals(Berlin.DATE, moment.toLocalDate());
         }
     }
 
