@@ -50,10 +50,17 @@ Installing
 
     adb install -r app/build/outputs/apk/debug/app-debug.apk
 
-If the phone still carries upstream's 0.4.2 Play build, **uninstall that first**.
-It is the same package name signed with a different key, so an upgrade install
-will be refused rather than merged. The uninstall takes any pinned widget with
-it, so the widget has to be added to the homescreen again afterwards.
+The debug build installs as `info.staticfree.android.twentyfourhour.dev` and
+labels itself "(dev)" in the launcher and the widget picker, so it sits beside
+upstream's 0.4.2 Play build rather than colliding with it: that is the same
+package name signed with a different key, which Android refuses to merge as an
+upgrade. Nothing has to be uninstalled, and any widget already pinned from the
+Play build stays pinned — the two are separate apps, each with its own widget in
+the picker. Only the install identity is suffixed; the classes keep their names,
+so pinned widgets of *this* build survive a reinstall as they always did.
+
+Release builds keep the unsuffixed package name, and so would collide. This fork
+is not released, so nothing does that today.
 
 Permissions
 -----------
@@ -72,16 +79,16 @@ sunrise by seconds.
 
 This fork is sideloaded, so both are granted by hand rather than asked for:
 
-    adb shell pm grant info.staticfree.android.twentyfourhour android.permission.ACCESS_COARSE_LOCATION
-    adb shell pm grant info.staticfree.android.twentyfourhour android.permission.ACCESS_BACKGROUND_LOCATION
+    adb shell pm grant info.staticfree.android.twentyfourhour.dev android.permission.ACCESS_COARSE_LOCATION
+    adb shell pm grant info.staticfree.android.twentyfourhour.dev android.permission.ACCESS_BACKGROUND_LOCATION
 
 Android takes those grants back on its own. An app the user never opens is
 auto-reset after 90 days and then hibernated, and a widget sitting on the
 homescreen does not count as opening it — measured, on a pinned and ticking
 widget. Opting out is one more command, needed once:
 
-    adb shell cmd appops set info.staticfree.android.twentyfourhour AUTO_REVOKE_PERMISSIONS_IF_UNUSED ignore
-    adb shell cmd appops get info.staticfree.android.twentyfourhour AUTO_REVOKE_PERMISSIONS_IF_UNUSED
+    adb shell cmd appops set info.staticfree.android.twentyfourhour.dev AUTO_REVOKE_PERMISSIONS_IF_UNUSED ignore
+    adb shell cmd appops get info.staticfree.android.twentyfourhour.dev AUTO_REVOKE_PERMISSIONS_IF_UNUSED
 
 If the sun goes missing, the app says which of the three reasons it was —
 no permission, a foreground-only grant, or no fix cached:

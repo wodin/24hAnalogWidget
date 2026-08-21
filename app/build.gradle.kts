@@ -15,6 +15,16 @@ android {
     }
 
     buildTypes {
+        // Installs beside upstream's Play build rather than colliding with it:
+        // same package name signed with a different key is an upgrade Android
+        // refuses, so the only way to hold both is a second identity. Only the
+        // applicationId moves - the namespace, and with it every class name,
+        // stays put, so the receiver's ComponentName is renamed for the new app
+        // and untouched for the old one. See ADR-0003 for why that matters.
+        debug {
+            applicationIdSuffix = ".dev"
+        }
+
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

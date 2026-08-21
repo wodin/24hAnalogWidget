@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The debug labels, translated. See ../values/strings.xml for why they differ. -->
+<resources>
+    <string name="app_name">Widget Horloge Analogique sur 24h (dev)</string>
+    <string name="widget_name">Horloge Analogique, 24h (dev)</string>
+</resources>
