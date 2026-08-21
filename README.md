@@ -45,6 +45,16 @@ Gradle can find it. The build pins the Java toolchain to 17, so the JDK on your
 `PATH` need not be 17 — but no toolchain resolver is configured, so one must
 already be present locally.
 
+Installing
+----------
+
+    adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+If the phone still carries upstream's 0.4.2 Play build, **uninstall that first**.
+It is the same package name signed with a different key, so an upgrade install
+will be refused rather than merged. The uninstall takes any pinned widget with
+it, so the widget has to be added to the homescreen again afterwards.
+
 Permissions
 -----------
 
@@ -60,8 +70,34 @@ some other app has already paid for and cannot power a radio, so this costs no
 battery. Coarse rather than fine because coarse is enough: a ~2 km grid moves
 sunrise by seconds.
 
-This fork is sideloaded, so both are granted by hand rather than asked for. If
-the sun goes missing, `logcat` says which of them is the one that is absent.
+This fork is sideloaded, so both are granted by hand rather than asked for:
+
+    adb shell pm grant info.staticfree.android.twentyfourhour android.permission.ACCESS_COARSE_LOCATION
+    adb shell pm grant info.staticfree.android.twentyfourhour android.permission.ACCESS_BACKGROUND_LOCATION
+
+Android takes those grants back on its own. An app the user never opens is
+auto-reset after 90 days and then hibernated, and a widget sitting on the
+homescreen does not count as opening it — measured, on a pinned and ticking
+widget. Opting out is one more command, needed once:
+
+    adb shell cmd appops set info.staticfree.android.twentyfourhour AUTO_REVOKE_PERMISSIONS_IF_UNUSED ignore
+    adb shell cmd appops get info.staticfree.android.twentyfourhour AUTO_REVOKE_PERMISSIONS_IF_UNUSED
+
+If the sun goes missing, the app says which of the three reasons it was —
+no permission, a foreground-only grant, or no fix cached:
+
+    adb logcat -s LastKnownObserver
+
+Nothing else logs the middle one. A widget redraw refused for want of
+background permission returns null with no exception and nothing in the log, at
+the same moment `checkSelfPermission` answers `GRANTED`. Opening the app is the
+other half of the diagnosis: the demo dial runs in the foreground, where coarse
+alone is enough and the background grant is not needed, so a sun there and a
+hatched widget on the homescreen means the background grant is gone, and both
+hatched means the phone has no fix.
+
+See [ADR-0005](docs/adr/0005-the-observers-position.md) for why the position is
+read this way at all.
 
 Source
 ------

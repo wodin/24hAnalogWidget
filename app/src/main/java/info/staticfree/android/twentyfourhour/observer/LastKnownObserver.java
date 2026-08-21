@@ -50,7 +50,7 @@ import androidx.annotation.Nullable;
  * answers {@code GRANTED} at the very moment the platform refuses, because a
  * foreground-only grant is enforced by the app-op and not by the permission,
  * and <em>nothing whatsoever</em> reaches {@code logcat}. Measured on both
- * emulators; written up in {@code docs/plans/candidate-d-location-notes.md}. So
+ * emulators; written up in {@code docs/adr/0005-the-observers-position.md}. So
  * all three reach the caller as null, who has one thing to draw either way, and
  * are told apart exactly once — in a line for whoever is asking why the sun
  * went missing.

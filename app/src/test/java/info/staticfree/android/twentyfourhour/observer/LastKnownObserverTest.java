@@ -30,7 +30,7 @@ import info.staticfree.android.twentyfourhour.sun.BuenosAires;
  * different reasons, and the platform will not tell them apart: a refused read
  * returns null with nothing in the log, and so does a phone that has simply
  * never had a fix. That is measured, not assumed, and the measurement is in
- * {@code docs/plans/candidate-d-location-notes.md}. What is asserted here is
+ * {@code docs/adr/0005-the-observers-position.md}. What is asserted here is
  * only that both reach the caller as null rather than as an exception or as a
  * wrong place; the log line that distinguishes them for a human is deliberately
  * not asserted, because nothing branches on it and pinning its wording would
