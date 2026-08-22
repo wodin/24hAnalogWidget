@@ -36,6 +36,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
+import info.staticfree.android.twentyfourhour.Diagnosis;
 import info.staticfree.android.twentyfourhour.R;
 import info.staticfree.android.twentyfourhour.dial.Dial;
 import info.staticfree.android.twentyfourhour.observer.Observer;
@@ -56,7 +57,6 @@ import info.staticfree.android.twentyfourhour.sun.SunPath;
  * {@link #setObserver} is not a knob; it pushes in what to draw rather than how.
  */
 public class SunPositionOverlay implements DialOverlay {
-    private static final String TAG = SunPositionOverlay.class.getSimpleName();
     private static final float HIGH_NOON_ARC_ANGLE = 2;
     private static final float DEGREE_CIRCLE = 360;
 
@@ -129,7 +129,8 @@ public class SunPositionOverlay implements DialOverlay {
         SunPath path = SunPath.on(observer, instant, zone);
 
         if (path == null) {
-            Log.w(TAG, "no sun path at " + observer + "; drawing the placeholder instead");
+            Log.w(Diagnosis.TAG,
+                    "no sun path at " + observer + "; drawing the placeholder instead");
             drawPlaceholder(canvas);
 
             return;

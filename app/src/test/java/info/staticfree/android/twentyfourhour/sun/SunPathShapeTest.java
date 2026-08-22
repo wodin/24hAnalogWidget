@@ -8,14 +8,9 @@ import androidx.annotation.NonNull;
 
 import org.junit.Test;
 
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.Month;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-
-import info.staticfree.android.twentyfourhour.observer.Observer;
 
 /**
  * The shape of a sun's day: what is true of any such day anywhere, whatever the
@@ -33,6 +28,10 @@ import info.staticfree.android.twentyfourhour.observer.Observer;
  * a shape that only ever held north of the equator was never shown to be a
  * shape. {@link Kashgar} is here only because its day overruns local midnight,
  * which is the one thing the other two cannot show.
+ *
+ * <p>And {@link London}, which is not a fourth day of the same kind but the
+ * absence of one: the place whose sun keeps every appointment but the last, so
+ * that there is no whole day here to have a shape at all.
  */
 public class SunPathShapeTest {
 
@@ -121,16 +120,9 @@ public class SunPathShapeTest {
      */
     @Test
     public void aPlaceMissingOneTwilightHasNoPathAtAll() {
-        Observer london = new Observer(51.5074, -0.1278);
-        ZoneId zone = ZoneId.of("Europe/London");
-        Instant solstice = LocalDate.of(2026, Month.JUNE, 21)
-                .atTime(LocalTime.NOON)
-                .atZone(zone)
-                .toInstant();
-
         assertNull("London in late June has a sunrise and a sunset but never a night dark " +
                         "enough for astronomical twilight, so there is no whole day to draw",
-                SunPath.on(london, solstice, zone));
+                SunPath.on(London.observer(), London.SOMETIME_THAT_DAY, London.ZONE));
     }
 
     private static void assertEveryMomentBelongsTo(@NonNull ZoneId zone, @NonNull LocalDate date,

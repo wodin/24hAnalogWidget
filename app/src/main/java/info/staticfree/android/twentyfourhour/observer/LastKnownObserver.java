@@ -25,6 +25,8 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import info.staticfree.android.twentyfourhour.Diagnosis;
+
 /**
  * Where the phone last saw itself, if it has seen itself at all.
  *
@@ -57,8 +59,6 @@ import androidx.annotation.Nullable;
  */
 public final class LastKnownObserver {
 
-    private static final String TAG = LastKnownObserver.class.getSimpleName();
-
     /**
      * The last fix the phone happens to have, or {@code null} — including when
      * the answer is really "you were not allowed to ask".
@@ -84,7 +84,7 @@ public final class LastKnownObserver {
             fix = context.getSystemService(LocationManager.class)
                     .getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
         } catch (SecurityException refused) {
-            Log.w(TAG, "no observer: the read was refused outright, so "
+            Log.w(Diagnosis.TAG, "no observer: the read was refused outright, so "
                     + "ACCESS_COARSE_LOCATION is not granted — it is the only "
                     + "location permission this app declares that can carry a read. "
                     + "adb shell pm grant " + context.getPackageName()
@@ -94,7 +94,7 @@ public final class LastKnownObserver {
         }
 
         if (fix == null) {
-            Log.w(TAG, "no observer: " + whySilent(context));
+            Log.w(Diagnosis.TAG, "no observer: " + whySilent(context));
 
             return null;
         }
