@@ -57,14 +57,33 @@
         </intent>
     </queries>
 
+    <!--
+        Both required="false", and both load-bearing: the attribute suppresses a
+        requirement the platform would otherwise imply, so deleting either one
+        tightens what this APK demands rather than tidying it away.
+        ACCESS_COARSE_LOCATION implies android.hardware.location as required,
+        and dropping the touchscreen entry implies android.hardware.faketouch
+        instead, as the default for every app. Neither implication can be seen
+        from here - the two lines look like the compatibility boilerplate they
+        are not, and only aapt2 dump badging on a built APK tells the cases
+        apart, naming them "requested android.permission.ACCESS_COARSE_LOCATION
+        permission" and "default feature for all apps".
+
+        Nothing enforces this. uses-feature is read by app stores and by nothing
+        else - not the installer, not adb install - so on a fork sideloaded to
+        one phone a tightened contract would harm nobody, and no test or lint
+        would go red either. They stay because they are true, not because
+        anything checks them.
+
+        Two more stood here, .gps and .network, deleted once measured: no
+        permission implies either, ACCESS_FINE_LOCATION having gone with the
+        observer work. The touchscreen entry is the weaker of the two that
+        remain - this fork has been phone-only since ADR-0001, so "runs without
+        touch" has had no target for a decade - and it stays for uniformity with
+        the entry above rather than on its own merit.
+    -->
     <uses-feature
         android:name="android.hardware.location"
-        android:required="false" />
-    <uses-feature
-        android:name="android.hardware.location.gps"
-        android:required="false" />
-    <uses-feature
-        android:name="android.hardware.location.network"
         android:required="false" />
     <uses-feature
         android:name="android.hardware.touchscreen"
