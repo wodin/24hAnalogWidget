@@ -90,6 +90,18 @@ widget. Opting out is one more command, needed once:
     adb shell cmd appops set info.staticfree.android.twentyfourhour.dev AUTO_REVOKE_PERMISSIONS_IF_UNUSED ignore
     adb shell cmd appops get info.staticfree.android.twentyfourhour.dev AUTO_REVOKE_PERMISSIONS_IF_UNUSED
 
+The minute hand needs a third grant, of a different kind. Without it the tick is
+delivered at the framework's convenience within roughly the next 45 seconds, and
+the dial runs visibly behind the phone's own clock:
+
+    adb shell cmd appops set info.staticfree.android.twentyfourhour.dev SCHEDULE_EXACT_ALARM allow
+
+That one costs no battery. The tick is a non-wakeup alarm, which cannot bring
+the phone out of sleep and is delivered only when it is already awake, so
+exactness moves when a redraw lands rather than adding any. Refusing it is safe:
+the widget falls back to the inexact schedule and keeps time less well. See
+[ADR-0003](docs/adr/0003-the-widget-tick.md).
+
 If the sun goes missing, the app says which of the three reasons it was —
 no permission, a foreground-only grant, or no fix cached:
 

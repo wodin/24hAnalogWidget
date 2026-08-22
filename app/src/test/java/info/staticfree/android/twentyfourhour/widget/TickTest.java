@@ -18,6 +18,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.shadows.ShadowAlarmManager;
 
 import info.staticfree.android.twentyfourhour.TwentyFourHourClockWidgetResizable;
 
@@ -167,6 +168,40 @@ public class TickTest {
         Tick.cancel(context());
 
         assertTrue("cancelling should leave no alarm behind", scheduled(context()).isEmpty());
+    }
+
+    /**
+     * The tick is exact where it is allowed to be, which is the whole of what
+     * the {@code SCHEDULE_EXACT_ALARM} grant buys. Read as a window rather than
+     * as a call: {@code WINDOW_EXACT} is what the framework records for an
+     * alarm it has promised to deliver on time, and asking for the promise
+     * rather than for the method that made it leaves the method free to change.
+     */
+    @Test
+    public void theTickIsExactWhenThePlatformAllowsIt() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(true);
+
+        Tick.schedule(context());
+
+        assertEquals("a permitted tick should be armed to fire on time",
+                ShadowAlarmManager.WINDOW_EXACT, only(context()).getWindowLengthMs());
+    }
+
+    /**
+     * And is still a tick where it is not. Refusal is the ordinary state of a
+     * phone whose owner never granted anything — every install starts here on
+     * API 33 and above — so the fallback is not an error path but the one most
+     * devices would take. What it must not do is throw, because nothing re-arms
+     * a tick that was never armed and the dial would stop for good.
+     */
+    @Test
+    public void theTickFallsBackToTheFrameworksScheduleWhenExactIsRefused() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(false);
+
+        Tick.schedule(context());
+
+        assertEquals("a refused tick should still be armed, at the framework's convenience",
+                ShadowAlarmManager.WINDOW_HEURISTIC, only(context()).getWindowLengthMs());
     }
 
     @NonNull

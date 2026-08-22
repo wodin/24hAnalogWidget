@@ -19,6 +19,21 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
+    <!--
+        The minute hand's punctuality, and nothing else. Without it the tick is
+        delivered at the framework's convenience within roughly the next 45
+        seconds - measured on the A34 against upstream's build, 3 to 69 seconds
+        behind with a minute skipped outright. Granted on install below API 33
+        and by hand above it, the same way this fork's other permissions are;
+        Tick asks at runtime and falls back to the inexact schedule when
+        refused, so a phone that never grants it keeps a working clock.
+
+        SCHEDULE_EXACT_ALARM rather than USE_EXACT_ALARM: the second is
+        install-granted but is declared to be for alarm clocks and calendar
+        reminders, and a widget's minute hand is neither.
+    -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
     <uses-feature
         android:name="android.hardware.location"
         android:required="false" />

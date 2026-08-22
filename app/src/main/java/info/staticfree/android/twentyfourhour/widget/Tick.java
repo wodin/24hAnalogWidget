@@ -19,6 +19,7 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 
 import androidx.annotation.NonNull;
 
@@ -38,19 +39,18 @@ import info.staticfree.android.twentyfourhour.TwentyFourHourClockWidgetResizable
  * {@link #schedule} may be called by anything that redraws the widget without
  * anyone counting the calls.
  *
- * <p>Not a repeat, not a wakeup, and not an exact alarm. In short: a repeat
- * does not drift, but the framework derives its batching window from the repeat
- * interval, so a minutely one asks to be run any time in the following 45
- * seconds and takes most of them; {@link AlarmManager#RTC} is <em>defined</em>
- * as delivered at the next moment the device is awake, which is already
- * "redraw when someone starts looking"; and an exact alarm needs a permission
- * that is denied by default from API 34 and meant for alarm clocks.
+ * <p>Not a repeat and not a wakeup. In short: a repeat does not drift, but the
+ * framework derives its batching window from the repeat interval, so a minutely
+ * one asks to be run any time in the following 45 seconds and takes most of
+ * them; and {@link AlarmManager#RTC} is <em>defined</em> as delivered at the
+ * next moment the device is awake, which is already "redraw when someone starts
+ * looking".
  *
- * <p>Each of those is a policy trade rather than a fact about this code, and
- * each was measured before it was chosen. The measurements live in
- * {@code docs/adr/0003-the-widget-tick.md}, which is also where to look before
- * changing any of them — including the one defect they did not fix, that the
- * dial can still be most of a minute behind.
+ * <p>Exact when the platform allows it, inexact when it does not — see
+ * {@link #schedule}. Every one of those is a policy trade rather than a fact
+ * about this code, and each was measured before it was chosen. The measurements
+ * live in {@code docs/adr/0003-the-widget-tick.md}, which is also where to look
+ * before changing any of them.
  */
 public final class Tick {
 
@@ -81,6 +81,20 @@ public final class Tick {
     /**
      * Arms the next redraw, replacing any already armed.
      *
+     * <p>Exact if the platform will have it. That costs a permission, and the
+     * permission is why this is not simply {@code setExact}: it is denied by
+     * default from API 33, so the call would throw on any phone whose owner had
+     * not granted it. What buys the exactness is the audience — one sideloaded
+     * phone whose install already runs {@code pm grant} — and what makes it
+     * safe to ask for is that being refused costs only the punctuality.
+     *
+     * <p>Without it the tick is delivered at the framework's convenience within
+     * roughly the next 45 seconds, which is not a rounding error: measured
+     * against upstream's build on the same phone, this dial ran 3 to 69 seconds
+     * behind and skipped a minute outright. Exactness is the only cure — a
+     * short {@code setWindow} was measured and the framework substitutes its own
+     * heuristic for the window asked. Both measurements are in ADR-0003.
+     *
      * <p>Idempotent, and that is load-bearing rather than incidental — it is
      * what lets every path that redraws the widget arm the next redraw without
      * anyone tracking whether one is outstanding. It holds by identity, not by
@@ -88,7 +102,45 @@ public final class Tick {
      * every time, so {@link AlarmManager} replaces rather than accumulates.
      */
     public static void schedule(@NonNull Context context) {
-        alarms(context).set(AlarmManager.RTC, topOfNextMinute(), pendingRedraw(context));
+        final AlarmManager alarms = alarms(context);
+        final long topOfNextMinute = topOfNextMinute();
+        final PendingIntent redraw = pendingRedraw(context);
+
+        if (mayBeExact(alarms)) {
+            try {
+                alarms.setExact(AlarmManager.RTC, topOfNextMinute, redraw);
+                return;
+            } catch (SecurityException revokedSinceTheCheck) {
+                // Between the check and the call is a window the user can
+                // revoke the grant in, and an uncaught throw here would end the
+                // chain: nothing re-arms a tick that never got armed, so the
+                // dial would freeze on the minute it last drew and read as a
+                // working clock. The inexact tick below is what this build did
+                // before exactness was asked for, so falling to it costs
+                // punctuality and nothing else.
+            }
+        }
+
+        alarms.set(AlarmManager.RTC, topOfNextMinute, redraw);
+    }
+
+    /**
+     * Whether an exact tick is ours to ask for.
+     *
+     * <p>{@code SCHEDULE_EXACT_ALARM} is granted on install below API 33 and
+     * denied by default at or above it, so this is a runtime question rather
+     * than a manifest one, and the answer can change under a running app —
+     * hence the catch at the call site as well as the check here. Below API 31
+     * there is nothing to ask: exactness needed no permission before {@code S},
+     * and {@code canScheduleExactAlarms} did not exist to answer.
+     *
+     * <p>The fallback is not a degraded mode to be reported. It is the schedule
+     * this widget kept for its whole life before the grant existed, and a dial
+     * some seconds late is a dial, so there is nothing here for a user to be
+     * told and nothing for the log to carry.
+     */
+    private static boolean mayBeExact(@NonNull AlarmManager alarms) {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms();
     }
 
     /**
