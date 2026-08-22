@@ -13,8 +13,9 @@ here rather than left to be re-derived.
 The tick is a non-wakeup one-shot alarm, anchored at the top of the next minute
 and re-armed by whatever the last one caused. Once a minute, because a dial with
 no second hand cannot change more often than that. `AlarmManager.RTC` rather
-than `RTC_WAKEUP`, inexact rather than exact, and armed by every path that
-redraws the widget rather than by a lifecycle hook.
+than `RTC_WAKEUP`, exact where the platform permits it and inexact where it
+does not, and armed by every path that redraws the widget rather than by a
+lifecycle hook.
 
 ## Why not a repeat
 
@@ -40,32 +41,17 @@ Measured on the current code the window oscillates rather than settling —
 closer to the next boundary and an early one further from it. Average lateness
 is lower. The worst case is not.
 
-That is the honest summary. The dial can still be most of a minute behind, which
-is the largest user-visible defect the widget has; it is not one this decision
-introduced, and it has no owner.
+That is the honest summary of the one-shot against the repeat, and for a while
+it left the dial most of a minute behind — the largest user-visible defect the
+widget had. That defect is closed now, but nothing about the shape closed it:
+what did is two sections down.
 
-## Why not an exact alarm
+## Why 0.4.2 kept time and this did not
 
-Punctuality is available at a price this app will not pay.
-`SCHEDULE_EXACT_ALARM` is denied by default from API 34 and sends the user to a
-settings screen to grant it; `USE_EXACT_ALARM` is install-granted but is
-declared to be for alarm clocks and calendar reminders, which a minute hand is
-not. A dial occasionally a minute stale in someone's pocket does not justify
-either.
-
-The cheaper-looking middle — ask for a short window rather than an exact time —
-was measured and does not work. A throwaway build calling
-`setWindow(RTC, topOfNextMinute, 5000, …)` reported `window=+40s425ms`:
-precisely the 0.75 × futurity a plain `set()` produces. The framework replaces a
-too-short window with its own inexact heuristic rather than clamping to what was
-asked. So there is no third option; punctuality costs an exact alarm.
-
-## Why 0.4.2 keeps time and this does not
-
-Upstream's 0.4.2 is on the same phone, and its dial turns on the second while
-this one does not. That is worth writing down because the sections above predict
-the opposite: 0.4.2 uses `setRepeating`, and a repeat is the shape rejected here
-for asking to be run any time in the following 45 seconds.
+Upstream's 0.4.2 is on the same phone, and for a while its dial turned on the
+second while this one did not. That was worth chasing, because the section above
+predicts the opposite: 0.4.2 uses `setRepeating`, and a repeat is the shape
+rejected here for asking to be run any time in the following 45 seconds.
 
 Measured on the A34, Android 16, on 2026-08-22, with both builds installed side
 by side and a widget of each pinned. From `dumpsys alarm`, ten consecutive
@@ -83,21 +69,90 @@ difference is `targetSdk`: 0.4.2 declares 17, and `AlarmManager` documents the
 inexact delivery introduced in API 19 as applying only to apps that target 19 or
 above — "applications whose targetSdkVersion is earlier than API 19 will
 continue to see the previous behavior in which all alarms are delivered exactly
-when requested". Its `flags=0x1` is `FLAG_STANDALONE`, the alarm being held out
-of the batching it is exempt from.
+when requested". Its `flags=0x1` is `FLAG_STANDALONE`, the alarm held out of the
+batching it is exempt from.
 
-So 0.4.2's punctuality is not a design this fork failed to copy. It is a
+So 0.4.2's punctuality was never a design this fork failed to copy. It is a
 compatibility exemption for code written before the rule existed, and one no
-build targeting 36 can ask for. There is no version of the current code that
-performs like it without an exact alarm.
+build targeting 36 can ask for. There is no version of this code that performs
+like it without an exact alarm, which is what the next section is about.
 
-What that changes about the section above is one of its two grounds, not its
-conclusion. `SCHEDULE_EXACT_ALARM` is still meant for alarm clocks; but "sends
-the user to a settings screen to grant it" is a cost for a published app and
-close to none for this one, whose README already asks for two `pm grant` lines
-and an `appops` command on the one phone it runs on. Measured on the A34, the op
-reads `Default mode: default` — ungranted, and settable the same way the others
-are. The decision stands as recorded; the reason it stands is now narrower.
+## Why an exact alarm after all
+
+This was decided twice and the first answer was no. Recorded then:
+`SCHEDULE_EXACT_ALARM` is denied by default from API 33 and sends the user to a
+settings screen to grant it; `USE_EXACT_ALARM` is install-granted but declared
+to be for alarm clocks and calendar reminders, which a minute hand is not. A
+dial occasionally a minute stale in someone's pocket does not justify either.
+
+Half of that survives. `USE_EXACT_ALARM` is still not ours to claim. But "sends
+the user to a settings screen" is a cost for an app with users, and this fork
+has one phone whose install already runs two `pm grant` lines and an `appops`
+command; the op is set there the same way the others are and reads back
+`SCHEDULE_EXACT_ALARM: allow`. What actually tipped it is the section above: the
+defect is not "occasionally a minute stale", it is a dial that skips minutes and
+sits visibly behind the phone's own clock, next to a fifteen-year-old build that
+does not.
+
+The middle option stays dead. A throwaway build calling
+`setWindow(RTC, topOfNextMinute, 5000, …)` reported `window=+40s425ms`:
+precisely the 0.75 × futurity a plain `set()` produces. The framework replaces a
+too-short window with its own inexact heuristic rather than clamping to what was
+asked. Punctuality costs an exact alarm or it costs nothing and buys nothing.
+
+Measured after the change, same phone, ten consecutive deliveries:
+
+    08:56:00.012  08:57:00.017  08:58:00.015  08:59:00.009  09:00:00.012
+    09:01:00.009  09:02:00.003  09:03:00.010  09:04:00.005  09:05:00.016
+
+Every one inside 17 ms of its minute, none skipped, and the pending alarm now
+reads `window=0 exactAllowReason=permission` — the same standalone row 0.4.2
+gets by exemption, this one by grant.
+
+The grant can be taken away again while the app runs, and `setExact` throws when
+it has been. That throw would end the chain, and nothing re-arms a tick that was
+never armed, so the dial would freeze on its last minute and go on looking like
+a clock. `Tick` therefore checks `canScheduleExactAlarms` and *also* catches, the
+catch being for the gap between the two. Falling back costs the punctuality and
+nothing else, which is why the fallback is silent and not a logged failure.
+
+### What it costs
+
+Nothing measurable, because the tick is `RTC` and non-wakeup. A non-wakeup alarm
+cannot bring the device out of suspend — it is delivered at the next moment the
+device is awake regardless — so exactness only moves *where inside an
+already-awake period* a redraw lands. It cannot add a wakeup, there being none
+to add to, and what batching normally buys, coalescing alarms so the CPU leaves
+idle fewer times, is not available to spend when the CPU is not idle.
+
+Measured over the 8m41s after the grant, screen on, both widgets pinned and
+ticking, from `dumpsys batterystats`:
+
+| | CPU | wakeups |
+| --- | --- | --- |
+| 0.4.2, exact by exemption | 1.257 s | 0 |
+| this build, exact by grant | 1.106 s | 0 |
+
+The fork is the cheaper of the two while keeping the same time, and neither app
+appears in the *Wakeup alarms* section at all.
+
+### And when nobody is looking
+
+Whether the exact tick should be suspended while the phone is locked, or while
+the widget is off screen, is the obvious next question. It already is, by the
+alarm type rather than by anything this app arranges.
+
+Measured over 3 days 9 hours of uptime: 0.4.2's tick was delivered 1410 times
+against the 4911 minutes that elapsed. Some 71% of its ticks never happened at
+all, the device having been suspended and a non-wakeup alarm not being delivered
+to a suspended device — across three nights, with `0 wakeups` throughout.
+Exactness does not touch that. It applies only once the device is up.
+
+The other half of the question has no mechanism behind it: a widget on a
+homescreen page nobody is looking at is not distinguishable from one being read.
+`AppWidgetProvider` has no visibility callback and no launcher reports one.
+Reacting to the screen going on and off explicitly would cost more than it saves,
+for the reason the next section gives.
 
 ## Why nothing wakes the device
 
@@ -237,10 +292,17 @@ The receiver keeps four overrides and no fields. Everything about when the
 widget redraws is in `Tick`, a plain object with no lifecycle and nothing to
 construct, so the schedule is assertable on the JVM: Robolectric's
 `ShadowAlarmManager` exposes the type, trigger time, interval and operation, and
-`ShadowPendingIntent` exposes the mutability flag. `TickTest` holds all four.
+`ShadowPendingIntent` exposes the mutability flag. `TickTest` holds all five.
 Three of them were wrong at some point in this candidate — the interval, the
 target and the mutability flag — and each was wrong in a way no compiler could
 see.
+
+Exactness is assertable there too, and by luck rather than design.
+`ShadowAlarmManager` records a window per alarm with `WINDOW_EXACT` and
+`WINDOW_HEURISTIC` sentinels, and lets a test set what `canScheduleExactAlarms`
+answers — so both branches are readable on the JVM without a device or a grant.
+The tests ask which window was recorded rather than which method was called,
+because it is the promise that matters and not the call that made it.
 
 One thing those tests cannot hold: `ShadowPendingIntent` does not implement the
 S+ mutability rule, so the missing-flag crash that made this widget unaddable
