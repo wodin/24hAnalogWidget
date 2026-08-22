@@ -35,6 +35,15 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <!--
+        Held to open the alarm list, not to set an alarm - the activity that
+        answers SHOW_ALARMS is guarded by this, so without it the tap resolves,
+        sends, and is refused by the activity manager with nothing on screen to
+        say so. Normal rather than dangerous, so it is granted on install and
+        there is nothing to grant by hand.
+    -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+
+    <!--
         The one package this app ever asks the platform about: whoever shows
         alarms when tapped. Without this the question is answered "nobody" from
         API 30 on, whatever is installed, and the widget's tap goes missing

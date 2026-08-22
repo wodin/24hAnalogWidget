@@ -102,6 +102,11 @@ exactness moves when a redraw lands rather than adding any. Refusing it is safe:
 the widget falls back to the inexact schedule and keeps time less well. See
 [ADR-0003](docs/adr/0003-the-widget-tick.md).
 
+A fourth permission, `com.android.alarm.permission.SET_ALARM`, needs nothing
+done to it. Tapping the widget opens the device's alarm list, and the activity
+that answers is guarded by it; it is a normal permission, so it is granted on
+install. Without it the tap is refused with nothing on screen to say so.
+
 If the sun goes missing, the app says which of the three reasons it was —
 no permission, a foreground-only grant, or no fix cached:
 

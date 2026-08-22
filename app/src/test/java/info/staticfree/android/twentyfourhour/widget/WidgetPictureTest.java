@@ -14,11 +14,15 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
 
+import android.Manifest;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
@@ -38,6 +42,8 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
+
+import java.util.Arrays;
 
 import info.staticfree.android.twentyfourhour.R;
 import info.staticfree.android.twentyfourhour.dial.Shading;
@@ -236,6 +242,27 @@ public class WidgetPictureTest {
     public void thePictureHasNoTapWhenTheDeviceHasNoAlarmList() {
         assertFalse("with no alarm list installed there is nothing to tap through to",
                 inflate().hasOnClickListeners());
+    }
+
+    /**
+     * Attaching the tap is only half of opening the alarm list. The activity
+     * that answers {@link AlarmClock#ACTION_SHOW_ALARMS} is guarded by {@link
+     * Manifest.permission#SET_ALARM}, so without it the tap resolves, sends,
+     * and is turned away by the activity manager — measured on an A34, where
+     * the widget looked exactly as it had when it carried no tap at all.
+     *
+     * <p>Asserted against the manifest because there is nowhere else it can be
+     * asserted: the permission is not read by any code here, it is checked by
+     * the other app's process, and a build that dropped it would pass every
+     * other test in this suite while the tap silently stopped working.
+     */
+    @Test
+    public void theTapCarriesThePermissionTheAlarmListIsGuardedBy() throws NameNotFoundException {
+        PackageInfo manifest = context().getPackageManager()
+                .getPackageInfo(context().getPackageName(), PackageManager.GET_PERMISSIONS);
+
+        assertTrue("the manifest should ask for the permission the alarm list is guarded by",
+                Arrays.asList(manifest.requestedPermissions).contains(Manifest.permission.SET_ALARM));
     }
 
     /**
