@@ -17,9 +17,12 @@ import static org.robolectric.Shadows.shadowOf;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
+import android.provider.AlarmClock;
 import android.util.DisplayMetrics;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -66,12 +69,13 @@ import info.staticfree.android.twentyfourhour.sun.BuenosAires;
 public class WidgetPictureTest {
 
     /**
-     * The first activity {@link info.staticfree.android.twentyfourhour.ClockUtil}
-     * looks for that is present on a stock device. Which of its six candidates
-     * is used does not matter here; that one of them is installed does.
+     * A stock device's clock app, named as the emulator names it. Which package
+     * it is does not matter and is never asked: what the picture looks for is
+     * the {@link AlarmClock#ACTION_SHOW_ALARMS} handler, so this component is
+     * only somewhere for that filter to hang.
      */
-    private static final ComponentName DESK_CLOCK =
-            new ComponentName("com.android.deskclock", "com.android.deskclock.AlarmClock");
+    private static final ComponentName CLOCK_APP =
+            new ComponentName("com.android.deskclock", "com.android.deskclock.HandleApiCalls");
 
     @Rule
     public final TestRule dialsZone = Shading.inTheDialsZone();
@@ -204,26 +208,52 @@ public class WidgetPictureTest {
     }
 
     /**
-     * A tap opens the device's clock app, when the probing in {@code ClockUtil}
-     * finds one. Whether it is attached afresh each time, and why it has to be,
+     * A tap opens the device's alarm list, when the device has one to open.
+     * Whether the tap is attached afresh each time, and why it has to be,
      * {@code build} explains.
+     *
+     * <p>The handler is registered against the action rather than at a fixed
+     * component, because that is the whole of what the picture asks the
+     * platform. This cannot fail the way the vendor table it replaced did: that
+     * asked six named packages whether they were installed, which stopped being
+     * a question this app is allowed to ask at API 30 — and answered null on
+     * every modern phone while this suite went on passing, because {@code
+     * ShadowPackageManager} does not filter by package visibility.
      */
     @Test
-    public void thePictureOpensTheClockAppWhenTheDeviceHasOne() {
-        shadowOf(context().getPackageManager()).addActivityIfNotPresent(DESK_CLOCK);
+    public void thePictureOpensTheAlarmListWhenTheDeviceHasOne() {
+        givenAnAlarmListIsInstalled();
 
-        assertTrue("a device with a clock app should give the picture a tap",
+        assertTrue("a device with an alarm list should give the picture a tap",
                 inflate().hasOnClickListeners());
     }
 
     /**
-     * And carries no tap when there is no clock app to open — the widget is
+     * And carries no tap when there is no alarm list to open — the widget is
      * then a picture and nothing else, rather than one that swallows a tap.
      */
     @Test
-    public void thePictureHasNoTapWhenTheDeviceHasNoClockApp() {
-        assertFalse("with no clock app installed there is nothing to tap through to",
+    public void thePictureHasNoTapWhenTheDeviceHasNoAlarmList() {
+        assertFalse("with no alarm list installed there is nothing to tap through to",
                 inflate().hasOnClickListeners());
+    }
+
+    /**
+     * Registers a handler for {@link AlarmClock#ACTION_SHOW_ALARMS}, which is
+     * what every phone with a clock app has and what the picture resolves
+     * against.
+     *
+     * <p>The filter carries {@link android.content.Intent#CATEGORY_DEFAULT} as
+     * well as the action, because an implicit intent is only resolvable if some
+     * filter accepts it by default — the same rule that decides whether {@code
+     * startActivity} would find anyone, which is the question being asked.
+     */
+    private static void givenAnAlarmListIsInstalled() {
+        IntentFilter showsAlarms = new IntentFilter(AlarmClock.ACTION_SHOW_ALARMS);
+        showsAlarms.addCategory(Intent.CATEGORY_DEFAULT);
+
+        shadowOf(context().getPackageManager()).addActivityIfNotPresent(CLOCK_APP);
+        shadowOf(context().getPackageManager()).addIntentFilterForActivity(CLOCK_APP, showsAlarms);
     }
 
     /**

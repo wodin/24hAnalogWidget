@@ -18,10 +18,13 @@ package info.staticfree.android.twentyfourhour.widget;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.os.Bundle;
+import android.provider.AlarmClock;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.widget.RemoteViews;
@@ -32,7 +35,6 @@ import androidx.annotation.Nullable;
 import java.time.Instant;
 import java.time.ZoneId;
 
-import info.staticfree.android.twentyfourhour.ClockUtil;
 import info.staticfree.android.twentyfourhour.R;
 import info.staticfree.android.twentyfourhour.dial.Dial;
 import info.staticfree.android.twentyfourhour.observer.Observer;
@@ -40,7 +42,7 @@ import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
 
 /**
  * What one widget shows: a dial drawn at this moment, and the tap that opens the
- * device's clock app.
+ * device's alarm list.
  *
  * <p>The unit is one widget rather than all of them, because the cell is what
  * decides the picture and each widget has a cell of its own. Nothing here
@@ -73,10 +75,8 @@ public final class WidgetPicture {
 
         // Every picture is a whole one, so the tap is attached every time rather
         // than once: there is no earlier picture left underneath for it to
-        // survive in. Null on most modern devices, where ClockUtil finds no
-        // clock app at all: from API 30 another package's components are
-        // invisible without a <queries> entry, and this app declares none.
-        final PendingIntent tap = ClockUtil.getClockIntent(context);
+        // survive in.
+        final PendingIntent tap = openAlarmList(context);
         if (tap != null) {
             picture.setOnClickPendingIntent(R.id.clock, tap);
         }
@@ -84,6 +84,44 @@ public final class WidgetPicture {
         picture.setImageViewBitmap(R.id.clock, render(context, options, observer));
 
         return picture;
+    }
+
+    /**
+     * A tap that opens whatever shows alarms on this device, or {@code null}
+     * where nothing does — a phone with no clock app, which is rare but is not
+     * the picture's business to insist on. The alarm list because that is what
+     * a clock widget has always opened here, and because the widget itself
+     * cannot be tapped into anything else: it shows a time and takes no input.
+     *
+     * <p>{@link AlarmClock#ACTION_SHOW_ALARMS} rather than a named component.
+     * This used to walk a table of six vendor clock packages asking the package
+     * manager whether each was installed, which was the only way to do it in
+     * 2011 and stopped working at API 30: another package is invisible to that
+     * question unless the manifest declares a {@code <queries>} for it, so all
+     * six answered "not installed" and the widget quietly lost its tap. The
+     * action has been platform since API 19, is what every clock app registers
+     * for, and needs no table to keep up to date — only the one {@code
+     * <queries>} entry that makes its handler visible to ask about.
+     *
+     * <p>Resolved rather than sent blind so that a device with no handler gets
+     * no tap at all, instead of a widget that swallows one. {@link
+     * PackageManager#MATCH_DEFAULT_ONLY} asks the question the launcher will
+     * later ask when it sends this: not "does any filter mention the action"
+     * but "would starting it find someone".
+     *
+     * <p>Immutable, because nothing that receives this is meant to add to it.
+     */
+    @Nullable
+    private static PendingIntent openAlarmList(@NonNull Context context) {
+        final Intent alarms = new Intent(AlarmClock.ACTION_SHOW_ALARMS)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        if (context.getPackageManager().resolveActivity(alarms, PackageManager.MATCH_DEFAULT_ONLY)
+                == null) {
+            return null;
+        }
+
+        return PendingIntent.getActivity(context, 0, alarms, PendingIntent.FLAG_IMMUTABLE);
     }
 
     /**

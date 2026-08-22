@@ -34,6 +34,20 @@
     -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
+    <!--
+        The one package this app ever asks the platform about: whoever shows
+        alarms when tapped. Without this the question is answered "nobody" from
+        API 30 on, whatever is installed, and the widget's tap goes missing
+        rather than failing - which is how it went missing. Declared as an
+        intent rather than a package name so that it keeps naming the right app
+        on a phone whose clock is the vendor's, or is one the user chose.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.SHOW_ALARMS" />
+        </intent>
+    </queries>
+
     <uses-feature
         android:name="android.hardware.location"
         android:required="false" />
