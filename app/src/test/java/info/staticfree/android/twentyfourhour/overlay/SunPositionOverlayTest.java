@@ -1,6 +1,7 @@
 package info.staticfree.android.twentyfourhour.overlay;
 
 import static info.staticfree.android.twentyfourhour.dial.Artwork.INTRINSIC_PX;
+import static info.staticfree.android.twentyfourhour.dial.Artwork.isSunOrange;
 import static info.staticfree.android.twentyfourhour.dial.Artwork.probeAlong;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -19,8 +20,13 @@ import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
 
+import java.time.ZonedDateTime;
+import java.util.function.IntPredicate;
+
+import info.staticfree.android.twentyfourhour.dial.Dial;
 import info.staticfree.android.twentyfourhour.observer.Observer;
 import info.staticfree.android.twentyfourhour.sun.BuenosAires;
+import info.staticfree.android.twentyfourhour.sun.SunPath;
 
 /**
  * Whether the shading lands where the observer's own sun puts it, or on a
@@ -53,11 +59,16 @@ import info.staticfree.android.twentyfourhour.sun.BuenosAires;
  * 66.75&deg;, which is 05:37 through noon to 16:27. Noon is the one angle a
  * mirror moves from outside the night to well inside it, so it is probed too.
  *
- * <p>The twilight arcs are nested <em>inside</em> the sunrise-to-sunset wedge —
- * each evening twilight is later than sunset and each morning one earlier than
- * sunrise — so they decide how dark a night pixel is and never whether it is
- * painted at all. Only the two horizon crossings move a probe across the
- * boundary this test measures.
+ * <p><strong>And the twilights and the high noon mark, which those three are
+ * blind to.</strong> The twilight arcs are nested <em>inside</em> the
+ * sunrise-to-sunset wedge — each evening twilight is later than sunset and each
+ * morning one earlier than sunrise — so they decide how dark a night pixel is
+ * and never whether it is painted at all, and a probe that counts coverage
+ * cannot see one. The high noon mark is two degrees wide and stands at this
+ * place's own high noon, which is nearly fifteen degrees round the dial from
+ * the dial's noon, so every probe above misses it too. Both are measured below
+ * instead, so that deleting either from {@code draw} is caught here rather than
+ * on a phone.
  *
  * <p>The overlay is drawn by itself onto an empty bitmap rather than through a
  * {@link info.staticfree.android.twentyfourhour.dial.Dial}, so every painted
@@ -123,6 +134,16 @@ public class SunPositionOverlayTest {
 
     private static final int OUTERMOST_PROBE_PX = 90;
 
+    /** The one radius a depth probe reads at; {@link #shadeDepthAt} says why 60. */
+    private static final int SHADE_PROBE_PX = 60;
+
+    /**
+     * Spelt as {@code Dial} and {@code HandsOverlay} both spell it. All three
+     * are private to their own file, so this is a fourth copy of one number
+     * rather than a fourth name for it.
+     */
+    private static final double DEGREES_PER_TURN = 360;
+
     /**
      * The shading follows the observer's own sunrise and sunset, at both of the
      * angles where those disagree with a nominal night.
@@ -154,6 +175,62 @@ public class SunPositionOverlayTest {
     }
 
     /**
+     * Each of the three twilights paints a narrower wedge over the night the
+     * one before it left, so a night pixel gets darker with every horizon the
+     * sun has already crossed. Four probes, one in each band, and the claim is
+     * the staircase rather than any single reading: it takes a probe per
+     * {@code drawInsetArc} call to fail when that one call goes.
+     *
+     * <p>Depth is read as alpha because every coat is the same black at
+     * {@code alpha 20} on a bitmap that started transparent, so more coats can
+     * only mean more alpha — 20, 38, 55 and 71 for one through four of them.
+     * Composing them over a background first would say the same thing in
+     * darkness and would need a background to be true of.
+     */
+    @Test
+    public void eachTwilightDeepensTheNightBeneathIt() {
+        SunPath path = BuenosAires.sunPath();
+        Bitmap drawn = render(BuenosAires.observer());
+
+        int night = shadeDepthAt(drawn, midwayAngle(path.sunset(), path.eveningCivilTwilight()));
+        int civil = shadeDepthAt(drawn,
+                midwayAngle(path.eveningCivilTwilight(), path.eveningNauticalTwilight()));
+        int nautical = shadeDepthAt(drawn,
+                midwayAngle(path.eveningNauticalTwilight(), path.eveningAstronomicalTwilight()));
+        int astronomical = shadeDepthAt(drawn,
+                midwayAngle(path.eveningAstronomicalTwilight(), path.morningAstronomicalTwilight()));
+
+        assertTrue("the hour after sunset is shaded at all", night > 0);
+        assertTrue("civil twilight is darker than the sunset wedge alone", civil > night);
+        assertTrue("nautical twilight is darker than civil", nautical > civil);
+        assertTrue("astronomical twilight is darker than nautical", astronomical > nautical);
+    }
+
+    /**
+     * The high noon mark stands where this observer's sun actually crosses the
+     * meridian, which is not where the dial puts noon. Buenos Aires runs nearly
+     * an hour behind its own meridian, so the two are about fifteen degrees
+     * apart — far enough that the mark being at one of them rules out the other,
+     * and the only reason a probe at {@link #NOON} never sees orange.
+     *
+     * <p>The angle is computed from the path rather than written down, so that
+     * moving the fixture's date moves the probe with it instead of quietly
+     * pointing it at empty dial. That costs the mapping check the other probes
+     * make — this one would follow {@code Dial.angleFor} wherever it went — and
+     * those three already own that question.
+     */
+    @Test
+    public void theHighNoonMarkStandsAtTheObserversOwnHighNoon() {
+        SunPath path = BuenosAires.sunPath();
+        Bitmap drawn = render(BuenosAires.observer());
+
+        assertTrue("the sun is marked at high noon, " + path.highNoon().toLocalTime(),
+                sunOrangeAlong(drawn, Dial.angleFor(path.highNoon().toLocalTime())) > 0);
+        assertEquals("and not at the dial's noon, which high noon is not", 0,
+                sunOrangeAlong(drawn, NOON));
+    }
+
+    /**
      * The overlay alone on a transparent bitmap, for Buenos Aires' 15 August
      * whether or not it is told that is where it stands: the day asked about is
      * the same either way, so the observer is the only difference between the
@@ -174,20 +251,72 @@ public class SunPositionOverlayTest {
     }
 
     /**
-     * How many of the sampled radii along {@code dialAngle} carry any paint at
-     * all. Zero means the angle was left alone; anything else means it was
-     * shaded, and the count reaches the failure message so a near miss reads
-     * differently from a wholesale one.
+     * How many of the sampled radii along {@code dialAngle} hold a pixel
+     * {@code wanted} accepts. The count rather than a yes or no, so that a near
+     * miss reaches the failure message reading differently from a wholesale one.
      */
-    private static int paintedAlong(@NonNull Bitmap drawn, double dialAngle) {
-        int painted = 0;
+    private static int countAlong(@NonNull Bitmap drawn, double dialAngle,
+            @NonNull IntPredicate wanted) {
+        int found = 0;
 
         for (int radius = INNERMOST_PROBE_PX; radius <= OUTERMOST_PROBE_PX; radius++) {
-            if (Color.alpha(probeAlong(drawn, dialAngle, radius)) > 0) {
-                painted++;
+            if (wanted.test(probeAlong(drawn, dialAngle, radius))) {
+                found++;
             }
         }
 
-        return painted;
+        return found;
+    }
+
+    /**
+     * How many of those radii carry any paint at all. Zero means the angle was
+     * left alone; anything else means it was shaded.
+     */
+    private static int paintedAlong(@NonNull Bitmap drawn, double dialAngle) {
+        return countAlong(drawn, dialAngle, pixel -> Color.alpha(pixel) > 0);
+    }
+
+    /**
+     * The angle halfway between two moments, going the way the clock does. The
+     * arcs are swept clockwise from the earlier moment to the later one, so a
+     * midpoint taken the other way round would leave the band it is meant to be
+     * inside.
+     */
+    private static double midwayAngle(@NonNull ZonedDateTime from, @NonNull ZonedDateTime to) {
+        double start = Dial.angleFor(from.toLocalTime());
+        double sweep = (Dial.angleFor(to.toLocalTime()) - start + DEGREES_PER_TURN) % DEGREES_PER_TURN;
+
+        return (start + sweep / 2) % DEGREES_PER_TURN;
+    }
+
+    /**
+     * How much shading has accumulated at one angle, as alpha. A single pixel
+     * rather than the radius {@link #paintedAlong} sweeps, because the arcs it
+     * reads are solid wedges rather than the Placeholder's hatch, so every
+     * sample along one radius would carry the same answer.
+     *
+     * <p><strong>60px is chosen against the narrowest band.</strong> That is the
+     * one between sunset and civil twilight, 6.46&deg; on this day, which at
+     * 60px is 6.8px across — so a probe at its midpoint stands 3.4px from
+     * either edge, against the 0.71px an antialiased edge can reach and the
+     * 0.71px more that rounding to the pixel grid can cost. Twice the margin
+     * needed, and 38px inside the 98px the inset edge stands at.
+     */
+    private static int shadeDepthAt(@NonNull Bitmap drawn, double dialAngle) {
+        return Color.alpha(probeAlong(drawn, dialAngle, SHADE_PROBE_PX));
+    }
+
+    /**
+     * How many of those radii carry the sun's orange, which only the high noon
+     * mark is painted in.
+     *
+     * <p>The whole radius here even though the mark is a solid wedge, unlike
+     * {@link #shadeDepthAt}'s single pixel, because the mark is only two degrees
+     * wide: at 30px that is one pixel across, which the rounding to the pixel
+     * grid can step over. The outer samples cannot all miss a wedge three pixels
+     * wide.
+     */
+    private static int sunOrangeAlong(@NonNull Bitmap drawn, double dialAngle) {
+        return countAlong(drawn, dialAngle, pixel -> isSunOrange(pixel));
     }
 }

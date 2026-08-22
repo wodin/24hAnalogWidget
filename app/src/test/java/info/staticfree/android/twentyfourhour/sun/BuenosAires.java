@@ -35,7 +35,9 @@ import info.staticfree.android.twentyfourhour.observer.Observer;
  * <p>A public city centre, never the device's own fix: this repo is public.
  *
  * <p>The only fixture visible outside this package, because it is the only one
- * with readers outside it. The pixel probes want this place's day; the reader
+ * with readers outside it. The pixel probes want this place's day, and two of
+ * them want the moments of it as well, so that a probe asks where the sun
+ * actually was rather than where it was on the day this was written; the reader
  * that produces an {@link Observer} from the phone wants nothing of the day at
  * all, only a latitude and a longitude that are safe to publish and are written
  * down once — a second copy of them would be a second answer about where Buenos
@@ -62,8 +64,13 @@ public final class BuenosAires {
         return new Observer(LATITUDE, LONGITUDE);
     }
 
+    /**
+     * This place's whole sun day. Public for the same reason {@link #observer()}
+     * is: a caller that built its own would be a second answer, and would have
+     * to repeat the assertion below to get a non-null one.
+     */
     @NonNull
-    static SunPath sunPath() {
+    public static SunPath sunPath() {
         SunPath path = SunPath.on(observer(), SOMETIME_THAT_DAY, ZONE);
 
         assertNotNull("Buenos Aires in August has a sunrise, a sunset and all three twilights",

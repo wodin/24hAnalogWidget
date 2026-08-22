@@ -83,6 +83,21 @@ public final class Artwork {
         return Color.alpha(pixel) == 255 && Color.red(pixel) > 0x80;
     }
 
+    /**
+     * The Sun's own orange, #FFC90E, as the high noon mark is painted in.
+     * Recognised by a red channel nothing else on that overlay can reach: the
+     * shading and the Placeholder's hatch are both pure black, varying only in
+     * alpha, so any red at all is the sun's.
+     *
+     * <p>Read after compositing, and by hue rather than by an exact value: the
+     * paint goes on at {@code alpha 127}, and a bitmap hands back unpremultiplied
+     * channels, so the orange survives whatever it was laid over — over one coat
+     * of shading it still reads 236 red against 13 blue.
+     */
+    public static boolean isSunOrange(int pixel) {
+        return Color.alpha(pixel) > 0 && Color.red(pixel) > 0x80 && Color.blue(pixel) < 0x40;
+    }
+
     private Artwork() {
     }
 }
