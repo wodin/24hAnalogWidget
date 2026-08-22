@@ -1,9 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    fitsSystemWindows because targeting SDK 35 or above makes an activity draw
+    edge to edge with no way to opt out: the window now extends under the
+    navigation bar, and the last two lines of the intro text were sitting behind
+    it. The attribute asks the framework to inset this view by whatever the
+    system bars occupy, which is the whole of what is needed here - the action
+    bar already handles the top, and nothing in this layout wants to be drawn
+    behind a bar.
+-->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/RelativeLayout1"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:fitsSystemWindows="true">
 
     <info.staticfree.android.twentyfourhour.dial.DialView
         android:id="@+id/dial"
