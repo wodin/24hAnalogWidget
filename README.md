@@ -99,29 +99,56 @@ the dial runs visibly behind the phone's own clock:
 That one costs no battery. The tick is a non-wakeup alarm, which cannot bring
 the phone out of sleep and is delivered only when it is already awake, so
 exactness moves when a redraw lands rather than adding any. Refusing it is safe:
-the widget falls back to the inexact schedule and keeps time less well. See
+the widget falls back to the inexact schedule and keeps time less well. Which of
+the two you have is answered below. See
 [ADR-0003](docs/adr/0003-the-widget-tick.md).
 
 A fourth permission, `com.android.alarm.permission.SET_ALARM`, needs nothing
 done to it. Tapping the widget opens the device's alarm list, and the activity
 that answers is guarded by it; it is a normal permission, so it is granted on
-install. Without it the tap is refused with nothing on screen to say so.
+install. Without it the tap is refused after this app is out of the picture,
+which makes it the one fault below that this app cannot report on: it is
+`system_server` that writes a `Permission Denial` and nothing of ours that
+writes anything, which is how it was found here.
 
-If the sun goes missing, the app says which of the three reasons it was —
-no permission, a foreground-only grant, or no fix cached:
+Diagnosis
+---------
 
-    adb logcat -s LastKnownObserver
+This app's failure mode is silence, three times over: a sun that went missing
+without a word, a tap that did nothing, and a dial a minute behind that still
+read as a working clock. Each of the three now says so, and everything this app
+has to say about itself is written under one name:
 
-Nothing else logs the middle one. A widget redraw refused for want of
-background permission returns null with no exception and nothing in the log, at
-the same moment `checkSelfPermission` answers `GRANTED`. Opening the app is the
-other half of the diagnosis: the demo dial runs in the foreground, where coarse
-alone is enough and the background grant is not needed, so a sun there and a
-hatched widget on the homescreen means the background grant is gone, and both
-hatched means the phone has no fix.
+    adb logcat -s 24hWidget
 
-See [ADR-0005](docs/adr/0005-the-observers-position.md) for why the position is
-read this way at all.
+**No sun.** Four lines can explain a hatched dial, and only three of them are
+faults: no permission, a foreground-only grant, or no fix cached. Nothing else
+logs the middle one — a widget redraw refused for want of background permission
+returns null with no exception and nothing in the log, at the same moment
+`checkSelfPermission` answers `GRANTED`. The fourth line reports no fault at
+all: the read worked, and the place has no whole sun path that day — the case
+described at the top of this file. Opening the app is the other half of the
+diagnosis: the demo dial runs in the foreground, where coarse alone is enough
+and the background grant is not needed, so a sun there and a hatched widget on
+the homescreen means the background grant is gone, and both hatched means the
+phone has no fix. See [ADR-0005](docs/adr/0005-the-observers-position.md) for
+why the position is read this way at all.
+
+**A tap with nothing to open.** There is always a tap, even where nothing on the
+phone answers the alarm-list intent; that tap goes to a receiver of this app's
+whose only job is to write a line saying so. It names the manifest's `<queries>`
+element as the first thing to check, because that is how the tap went missing
+here before, and because the package manager gives the same answer whether the
+phone has no clock app or this app is merely not allowed to see the one it has.
+The other way a tap dies — `SET_ALARM` missing — never reaches that receiver,
+and is the exception noted above.
+
+**A minute hand that cannot keep exact time.** Opening the app states on screen
+whether the tick is punctual, in both directions — a line that appears only when
+something is wrong cannot be told apart from a line that has stopped being
+drawn. When it is not, the `SCHEDULE_EXACT_ALARM` command above is written to
+the log as a line of its own, built from the running build's package name so it
+can be pasted without editing.
 
 Source
 ------
