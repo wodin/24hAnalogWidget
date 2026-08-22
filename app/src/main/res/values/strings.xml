@@ -4,4 +4,19 @@
     <string name="widget_name">Analog clock, 24h</string>
     <string name="intro_text">This is a preview of the homescreen widget which displays a 12-at-the-top 24 hour analog clock. Noon is at the top so that the hour hand mimics the path of the sun.</string>
 
+    <!--
+        Both states of one answer; WidgetDemo has why the healthy one is shown
+        at all.
+
+        %1$s is Diagnosis.TAG, formatted in rather than written out. The tag is
+        already written down twice - the constant, and the adb logcat -s the
+        README hands out - and this would be the third copy free to drift,
+        telling a reader to filter for a name nothing writes under.
+
+        "a minute or more" and not "up to a minute": measured on the A34 at 3 to
+        69 seconds late, and 69 seconds late is a minute skipped outright.
+    -->
+    <string name="tick_keeps_exact_time">The minute hand keeps exact time.</string>
+    <string name="tick_cannot_keep_exact_time">The minute hand can fall a minute or more behind: SCHEDULE_EXACT_ALARM is not granted. The command that grants it is in logcat, under %1$s.</string>
+
 </resources>

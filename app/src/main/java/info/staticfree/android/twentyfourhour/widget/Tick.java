@@ -47,10 +47,11 @@ import info.staticfree.android.twentyfourhour.TwentyFourHourClockWidgetResizable
  * looking".
  *
  * <p>Exact when the platform allows it, inexact when it does not — see
- * {@link #schedule}. Every one of those is a policy trade rather than a fact
- * about this code, and each was measured before it was chosen. The measurements
- * live in {@code docs/adr/0003-the-widget-tick.md}, which is also where to look
- * before changing any of them.
+ * {@link #schedule}, and {@link #keepsExactTime} for the question anything
+ * outside this class asks to find out which. Every one of those is a policy
+ * trade rather than a fact about this code, and each was measured before it was
+ * chosen. The measurements live in {@code docs/adr/0003-the-widget-tick.md},
+ * which is also where to look before changing any of them.
  */
 public final class Tick {
 
@@ -106,7 +107,7 @@ public final class Tick {
         final long topOfNextMinute = topOfNextMinute();
         final PendingIntent redraw = pendingRedraw(context);
 
-        if (mayBeExact(alarms)) {
+        if (keepsExactTime(alarms)) {
             try {
                 alarms.setExact(AlarmManager.RTC, topOfNextMinute, redraw);
                 return;
@@ -125,21 +126,49 @@ public final class Tick {
     }
 
     /**
-     * Whether an exact tick is ours to ask for.
+     * Whether the platform will presently allow an exact tick.
+     *
+     * <p>A question about the grant, and deliberately not a promise about any
+     * particular redraw. The two come apart on the path {@link #schedule}
+     * catches: the grant can be withdrawn between this answer and the next
+     * arming, and that tick is then inexact while this method last said
+     * otherwise. So "yes" means the next tick will be armed exactly if nothing
+     * changes under it, which is the most anything can truthfully say here.
      *
      * <p>{@code SCHEDULE_EXACT_ALARM} is granted on install below API 33 and
      * denied by default at or above it, so this is a runtime question rather
      * than a manifest one, and the answer can change under a running app —
-     * hence the catch at the call site as well as the check here. Below API 31
-     * there is nothing to ask: exactness needed no permission before {@code S},
-     * and {@code canScheduleExactAlarms} did not exist to answer.
+     * hence the catch in {@link #schedule} as well as the check here. Below API
+     * 31 there is nothing to ask: exactness needed no permission before
+     * {@code S}, and {@code canScheduleExactAlarms} did not exist to answer.
      *
-     * <p>The fallback is not a degraded mode to be reported. It is the schedule
-     * this widget kept for its whole life before the grant existed, and a dial
-     * some seconds late is a dial, so there is nothing here for a user to be
-     * told and nothing for the log to carry.
+     * <p><strong>Public because the fallback turned out to be worth
+     * reporting</strong>, which ADR-0003 recorded the opposite of and now
+     * records the correction to. What changed is not the schedule but this
+     * fork's README, which publishes the {@code appops} line that grants the op
+     * as an install step — so the fallback stopped being an accepted mode and
+     * became a step somebody skipped. Measured on the A34, what that looks like
+     * is a dial running 3 to 69 seconds behind the phone's own clock with a
+     * minute skipped outright: a working clock at a glance, which is the
+     * failure mode this app keeps having.
+     *
+     * <p><strong>Asked here, reported elsewhere.</strong> This answers and says
+     * nothing itself, because every caller inside this class is on the redraw
+     * path and {@code onUpdate} runs minutely — a line written here would be
+     * 1440 a day. {@code WidgetDemo} asks it once per launch, which is a person
+     * opening the app, and that is where the answer is turned into words.
      */
-    private static boolean mayBeExact(@NonNull AlarmManager alarms) {
+    public static boolean keepsExactTime(@NonNull Context context) {
+        return keepsExactTime(alarms(context));
+    }
+
+    /**
+     * The same question of an {@link AlarmManager} already in hand, which is
+     * how {@link #schedule} asks it: the two callers differ only in whether
+     * they have the service yet, so the alternative is the caller that does
+     * fetching it a second time to satisfy a signature.
+     */
+    private static boolean keepsExactTime(@NonNull AlarmManager alarms) {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms();
     }
 

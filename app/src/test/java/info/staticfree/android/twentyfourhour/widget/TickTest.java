@@ -204,6 +204,39 @@ public class TickTest {
                 ShadowAlarmManager.WINDOW_HEURISTIC, only(context()).getWindowLengthMs());
     }
 
+    /**
+     * The same fact, asked rather than inferred. {@link Tick#schedule} arms the
+     * exact alarm the test above reads; this is the question anything outside
+     * the tick has to ask to find out whether it did, and the demo asks it on
+     * every launch.
+     *
+     * <p>The two cannot disagree, and that is by construction rather than by
+     * assertion: {@code schedule} branches on this very method, so there is no
+     * second answer to keep in step. What these two cases pin is that the
+     * answer tracks the platform at all — a stub returning a constant would
+     * leave the pair above green and exactly one of these red.
+     */
+    @Test
+    public void theTickKeepsExactTimeWhenThePlatformAllowsIt() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(true);
+
+        assertTrue("a permitted tick should report that it keeps exact time",
+                Tick.keepsExactTime(context()));
+    }
+
+    /**
+     * And says so when it does not, which is the whole of what the demo has to
+     * report. Refusal is the ordinary state of an install that granted nothing,
+     * so this is the answer most phones would get.
+     */
+    @Test
+    public void theTickSaysSoWhenItCannotKeepExactTime() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(false);
+
+        assertFalse("a refused tick should report that it cannot keep exact time",
+                Tick.keepsExactTime(context()));
+    }
+
     @NonNull
     private static Context context() {
         return RuntimeEnvironment.getApplication();

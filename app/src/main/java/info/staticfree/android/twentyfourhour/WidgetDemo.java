@@ -19,11 +19,14 @@ package info.staticfree.android.twentyfourhour;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.util.Log;
+import android.widget.TextView;
 
 import info.staticfree.android.twentyfourhour.dial.Dial;
 import info.staticfree.android.twentyfourhour.dial.DialView;
 import info.staticfree.android.twentyfourhour.observer.LastKnownObserver;
 import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
+import info.staticfree.android.twentyfourhour.widget.Tick;
 
 /**
  * The dial on a screen of its own, showing what the widget shows.
@@ -40,6 +43,18 @@ import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
  * more exactly. This is the reading that needs no cable: it tells them apart on
  * the screen already in your hand, which is where somebody wondering why the
  * sun went missing is standing.
+ *
+ * <p>The third silent failure is answered here too, though not by that
+ * comparison — nothing about a punctual dial and a late one looks different.
+ * Measured on the A34, a dial that had fallen 3 to 69 seconds behind and
+ * skipped a minute still read as a working clock, and finding out otherwise
+ * cost a side-by-side install of upstream's build and two {@code dumpsys alarm}
+ * sessions. So this one is answered in words rather than by looking.
+ *
+ * <p><strong>Why here and not in the widget.</strong> Every reading on this
+ * screen needs a person to trigger it, and this activity is the only trigger of
+ * that kind the app has; {@code Tick.keepsExactTime} has why the tick cannot
+ * report on itself.
  */
 public class WidgetDemo extends Activity {
 
@@ -61,5 +76,53 @@ public class WidgetDemo extends Activity {
         sun.setObserver(LastKnownObserver.read(this));
 
         dialView.setDial(Dial.createStandard(this, sun));
+
+        reportWhetherTheTickKeepsTime();
+    }
+
+    /**
+     * Says on screen whether the minute hand is punctual, and in
+     * {@code logcat} what to type if it is not.
+     *
+     * <p><strong>Both states are shown.</strong> A line that appears only when
+     * something is wrong is indistinguishable from a line that has stopped
+     * being drawn, and every defect this app has had was a silence that read as
+     * working. So the healthy case gets words too, and their real job is to
+     * prove the unhealthy one would have appeared.
+     *
+     * <p>The screen and the log carry different halves on purpose. The screen
+     * is read on a phone with no cable attached and answers one question; the
+     * command that fixes it has to be typed exactly and is worthless anywhere
+     * but at a prompt, so it goes where a prompt already is.
+     *
+     * <p><strong>The command is a line of its own</strong>, after the line that
+     * explains it. Appending it to the explanation would leave a reader
+     * selecting a fragment out of a paragraph, which is the difference between
+     * a command that is pasteable and one that merely appears in the log.
+     * {@code LastKnownObserver} appends, and is the worse of the two for it.
+     *
+     * <p>Built with {@link #getPackageName} rather than written out, because it
+     * is not the same on both builds: the debug one installs under a suffixed
+     * applicationId so that it can sit beside upstream's, and a command naming
+     * the wrong one fails with a message about an unknown package rather than
+     * doing nothing visible.
+     */
+    private void reportWhetherTheTickKeepsTime() {
+        final TextView health = findViewById(R.id.tick_health);
+
+        if (Tick.keepsExactTime(this)) {
+            health.setText(R.string.tick_keeps_exact_time);
+
+            return;
+        }
+
+        health.setText(getString(R.string.tick_cannot_keep_exact_time, Diagnosis.TAG));
+
+        Log.w(Diagnosis.TAG, "the tick cannot keep exact time: SCHEDULE_EXACT_ALARM is declared "
+                + "but not granted, which is the default at API 33 and above. Measured on the "
+                + "A34, the dial then ran 3 to 69 seconds behind the phone's own clock and "
+                + "skipped a minute outright. The next line grants it.");
+        Log.w(Diagnosis.TAG,
+                "adb shell cmd appops set " + getPackageName() + " SCHEDULE_EXACT_ALARM allow");
     }
 }

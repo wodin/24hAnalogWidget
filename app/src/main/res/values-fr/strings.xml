@@ -3,4 +3,6 @@
     <string name="app_name">Widget Horloge Analogique sur 24h</string>
     <string name="widget_name">Horloge Analogique, 24h</string>
     <string name="intro_text">Ceci est un apperçu de ce widget d\'écran d\'accueil qui montre une horloge analogique sur 24 heures. Midi est en haut, pour que l\'aiguille des heures suive la course du soleil.</string>
+    <string name="tick_keeps_exact_time">L\'aiguille des minutes est à l\'heure exacte.</string>
+    <string name="tick_cannot_keep_exact_time">L\'aiguille des minutes peut retarder d\'une minute ou plus : SCHEDULE_EXACT_ALARM n\'est pas accordée. La commande qui l\'accorde est dans logcat, sous %1$s.</string>
 </resources>

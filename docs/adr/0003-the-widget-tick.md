@@ -114,7 +114,61 @@ it has been. That throw would end the chain, and nothing re-arms a tick that was
 never armed, so the dial would freeze on its last minute and go on looking like
 a clock. `Tick` therefore checks `canScheduleExactAlarms` and *also* catches, the
 catch being for the gap between the two. Falling back costs the punctuality and
-nothing else, which is why the fallback is silent and not a logged failure.
+nothing else.
+
+### Why the fallback is reported after all
+
+This section used to end "which is why the fallback is silent and not a logged
+failure". Half of that was right, and the half that was wrong cost a session.
+
+The right half is that there is nothing here to interrupt a *user* with. The
+inexact schedule is the one this widget kept for its whole life before the grant
+existed, and a dial some seconds late is a dial.
+
+The wrong half is the step from there to "so there is nothing to write down".
+What changed between the two decisions is not the schedule but this fork's own
+README, which now publishes `cmd appops set … SCHEDULE_EXACT_ALARM allow` as one
+of its install steps. That turns the fallback from an accepted mode into **a
+step somebody skipped** — and a skipped install step is exactly what is worth
+reporting, because its symptom is a clock. Measured on the A34: 3 to 69 seconds
+late with a minute skipped outright, which at a glance is a working dial.
+Finding out otherwise took a side-by-side install of upstream's build and two
+`dumpsys alarm` sessions, and nothing on the phone said a word.
+
+So it is reported, and neither report is on the redraw path:
+
+- `WidgetDemo` states on screen whether the tick keeps exact time, **in both
+  states**. Always shown rather than only when refused, because a line that
+  appears only when something is wrong cannot be told apart from a line that has
+  stopped being drawn — and silence that reads as working is this app's failure
+  mode three times over.
+- The same launch writes the `appops` command to `logcat` under `24hWidget`, as
+  a line of its own after the line explaining it, and built from the running
+  app's own package name because the debug build installs under a suffixed one.
+  The screen answers the question; the log carries the thing that has to be
+  typed exactly, which is worthless anywhere but at a prompt — and worth little
+  there if the reader has to pick it out of a paragraph.
+
+`Tick` itself still says nothing, and that constraint is what put the words in
+the demo rather than beside the check. Every caller inside `Tick` is on the
+redraw path, where `onUpdate` runs once a minute, so a line written there would
+be 1440 a day. Throttling one with a `static` memo does not rescue it: a
+widget's process is started to deliver a broadcast and is a kill candidate the
+moment it returns, so whether the memo survives to the next tick is up to memory
+pressure — one line a day on an idle phone, 1440 on a busy one,
+non-deterministically, and the log could not tell you which. Opening the app is
+the rare trigger this needs, so `mayBeExact` was promoted to
+`Tick.keepsExactTime` for the demo to ask.
+
+What the screen reports is the grant, and not the punctuality of any particular
+redraw — the two are the same thing only while nothing changes underneath them.
+`schedule` branches on the very method the demo calls, so the two cannot read
+the platform differently; but the `SecurityException` catch above exists because
+the grant can be withdrawn between the check and the call, and a tick armed
+through that catch is inexact while the screen last said otherwise. The window
+is small, the direction is the safe one — the screen is optimistic, never
+falsely alarming — and the widest true statement available is the one the
+method's javadoc makes rather than a promise about the next minute.
 
 ### What it costs
 

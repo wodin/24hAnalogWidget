@@ -14,10 +14,13 @@ import androidx.annotation.NonNull;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.shadows.ShadowAlarmManager;
 import org.robolectric.shadows.ShadowLog;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import info.staticfree.android.twentyfourhour.observer.LastKnownObserver;
@@ -58,6 +61,28 @@ public class DiagnosisTest {
 
     /** Any side at all: nothing here reads a pixel, only the log. */
     private static final int SIDE_PX = 100;
+
+    /**
+     * The one tag written here that is not this app's.
+     *
+     * <p>Robolectric narrates lifecycle transitions under it, from inside
+     * {@code create()} — so unlike the startup narration, which {@link #startFromASilentLog}
+     * gets ahead of by clearing, this one arrives interleaved with the lines
+     * under test and cannot be cleared in advance.
+     *
+     * <p>Dropped by name rather than by relaxing the assertion to "contains".
+     * The strictness is the whole value of this class, and "every tag but this
+     * one, which the harness wrote" keeps it: the exclusion is a single literal
+     * a reader can check, and it says what it is excluding and why. What it
+     * costs is that a site of ours which adopted this exact tag would pass —
+     * named here rather than left to be discovered.
+     *
+     * <p>Dropped at one call site and not in {@link #tagsWritten}, so that the
+     * cases which build no activity keep the unconditional reading they were
+     * written with. An exclusion in the shared helper would quietly pay for
+     * this case out of the other four.
+     */
+    private static final String ROBOLECTRIC_NARRATION = "LifecycleMonitor";
 
     /**
      * Robolectric brings up an Android it has to narrate — {@code OverlayConfig}
@@ -133,6 +158,26 @@ public class DiagnosisTest {
     }
 
     /**
+     * A minute hand that cannot be punctual says so under the same tag, from
+     * the demo rather than from the tick — {@code Tick.keepsExactTime} has why.
+     *
+     * <p>Three lines land here rather than one: the demo reads the observer as
+     * well, and a Robolectric phone has no fix cached, and the tick's own
+     * report is a sentence followed by the command. That is what the set
+     * assertion is for — all three are this app's, so all three must agree, and
+     * a second tag turning up fails whichever of them brought it.
+     */
+    @Test
+    public void theInexactTickIsDiagnosedUnderTheOneTag() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(false);
+
+        Robolectric.buildActivity(WidgetDemo.class).setup();
+
+        assertEquals("a tick that cannot keep exact time should say so under the published tag",
+                singletonList(Diagnosis.TAG), tagsWrittenIgnoring(ROBOLECTRIC_NARRATION));
+    }
+
+    /**
      * Every tag written so far, in the order first seen and without repeats.
      * The set and not the count, so a failure names the tag that turned up
      * rather than only that one did.
@@ -143,6 +188,19 @@ public class DiagnosisTest {
                 .map(line -> line.tag)
                 .distinct()
                 .collect(toList());
+    }
+
+    /**
+     * The same, less one tag the harness wrote rather than the app. Takes the
+     * tag to drop as an argument so that a reader of the case can see which
+     * leniency it is buying, instead of inheriting an exclusion from a helper.
+     */
+    @NonNull
+    private static List<String> tagsWrittenIgnoring(@NonNull String harnessTag) {
+        List<String> tags = new ArrayList<>(tagsWritten());
+        tags.remove(harnessTag);
+
+        return tags;
     }
 
     @NonNull

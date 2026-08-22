@@ -29,14 +29,36 @@
         android:id="@+id/intro_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_above="@+id/tick_health"
+        android:layout_alignParentStart="true"
+        android:gravity="center"
+        android:paddingStart="10sp"
+        android:paddingEnd="10sp"
+        android:paddingBottom="5sp"
+        android:paddingTop="5sp"
+        android:text="@string/intro_text"
+        android:textAppearance="?android:attr/textAppearanceMedium" />
+
+    <!--
+        No android:text. WidgetDemo fills this in during onCreate and fills it
+        in on both branches, so the empty view here is never what a person sees,
+        and a placeholder would only add a third thing the line could say.
+
+        Smaller than the intro text above it: the intro says what the dial is
+        and is read once, this says how the dial is doing and is read whenever
+        somebody suspects it of lying.
+    -->
+    <TextView
+        android:id="@+id/tick_health"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentStart="true"
         android:gravity="center"
         android:paddingStart="10sp"
         android:paddingEnd="10sp"
         android:paddingBottom="20sp"
-        android:paddingTop="5sp"
-        android:text="@string/intro_text"
-        android:textAppearance="?android:attr/textAppearanceMedium" />
+        android:paddingTop="0sp"
+        android:textAppearance="?android:attr/textAppearanceSmall" />
 
 </RelativeLayout>
