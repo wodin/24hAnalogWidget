@@ -60,6 +60,45 @@ precisely the 0.75 × futurity a plain `set()` produces. The framework replaces 
 too-short window with its own inexact heuristic rather than clamping to what was
 asked. So there is no third option; punctuality costs an exact alarm.
 
+## Why 0.4.2 keeps time and this does not
+
+Upstream's 0.4.2 is on the same phone, and its dial turns on the second while
+this one does not. That is worth writing down because the sections above predict
+the opposite: 0.4.2 uses `setRepeating`, and a repeat is the shape rejected here
+for asking to be run any time in the following 45 seconds.
+
+Measured on the A34, Android 16, on 2026-08-22, with both builds installed side
+by side and a widget of each pinned. From `dumpsys alarm`, ten consecutive
+history rows per app:
+
+- 0.4.2 — `window=+45s0ms repeatInterval=60000 flags=0x1`, and every row landing
+  on `…:00.000`, `…:00.005`, `…:00.001`. It has the window and does not spend it.
+- This build — one-shot, no repeat interval, rows at 3, 9, 12, 14, 15 and 18
+  seconds past the minute, and one minute with no row at all: the tick anchored
+  at 08:32:00 arrived at 08:33:09, 69 seconds late, so the dial went straight
+  from 08:32 to 08:34 and was a whole minute wrong for most of two.
+
+Both apps were in standby bucket 10, so buckets are not the difference. The
+difference is `targetSdk`: 0.4.2 declares 17, and `AlarmManager` documents the
+inexact delivery introduced in API 19 as applying only to apps that target 19 or
+above — "applications whose targetSdkVersion is earlier than API 19 will
+continue to see the previous behavior in which all alarms are delivered exactly
+when requested". Its `flags=0x1` is `FLAG_STANDALONE`, the alarm being held out
+of the batching it is exempt from.
+
+So 0.4.2's punctuality is not a design this fork failed to copy. It is a
+compatibility exemption for code written before the rule existed, and one no
+build targeting 36 can ask for. There is no version of the current code that
+performs like it without an exact alarm.
+
+What that changes about the section above is one of its two grounds, not its
+conclusion. `SCHEDULE_EXACT_ALARM` is still meant for alarm clocks; but "sends
+the user to a settings screen to grant it" is a cost for a published app and
+close to none for this one, whose README already asks for two `pm grant` lines
+and an `appops` command on the one phone it runs on. Measured on the A34, the op
+reads `Default mode: default` — ungranted, and settable the same way the others
+are. The decision stands as recorded; the reason it stands is now narrower.
+
 ## Why nothing wakes the device
 
 `RTC` is non-wakeup, which is defined as delivered at the next moment the device
