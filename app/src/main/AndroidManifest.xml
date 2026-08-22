@@ -137,6 +137,24 @@
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <!--
+            Where a tap goes when the picture found nothing to open, so that a
+            widget which has lost its tap says so instead of looking like a
+            widget that never had one. It has no intent-filter and needs none:
+            the only thing that ever addresses it is a PendingIntent naming the
+            class, and an explicit intent is delivered without one.
+
+            Not exported, and that costs nothing even though the sender is the
+            launcher's process rather than ours. A PendingIntent is sent under
+            the identity of the app that created it, so the broadcast arrives as
+            one of our own - which is the whole audience this receiver has, and
+            an unexported receiver is the way to say that nobody else has any
+            business waking it.
+        -->
+        <receiver
+            android:name=".widget.UnansweredTap"
+            android:exported="false" />
     </application>
 
 </manifest>

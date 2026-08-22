@@ -41,8 +41,8 @@ import info.staticfree.android.twentyfourhour.observer.Observer;
 import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
 
 /**
- * What one widget shows: a dial drawn at this moment, and the tap that opens the
- * device's alarm list.
+ * What one widget shows: a dial drawn at this moment, and a tap — which opens
+ * the device's alarm list, or, on a device where nothing answers, says as much.
  *
  * <p>The unit is one widget rather than all of them, because the cell is what
  * decides the picture and each widget has a cell of its own. Nothing here
@@ -76,10 +76,7 @@ public final class WidgetPicture {
         // Every picture is a whole one, so the tap is attached every time rather
         // than once: there is no earlier picture left underneath for it to
         // survive in.
-        final PendingIntent tap = openAlarmList(context);
-        if (tap != null) {
-            picture.setOnClickPendingIntent(R.id.clock, tap);
-        }
+        picture.setOnClickPendingIntent(R.id.clock, tap(context));
 
         picture.setImageViewBitmap(R.id.clock, render(context, options, observer));
 
@@ -87,11 +84,18 @@ public final class WidgetPicture {
     }
 
     /**
-     * A tap that opens whatever shows alarms on this device, or {@code null}
-     * where nothing does — a phone with no clock app, which is rare but is not
-     * the picture's business to insist on. The alarm list because that is what
-     * a clock widget has always opened here, and because the widget itself
-     * cannot be tapped into anything else: it shows a time and takes no input.
+     * A tap that opens whatever shows alarms on this device, or — where nothing
+     * does — one that reaches {@link UnansweredTap} and says so. The alarm list
+     * because that is what a clock widget has always opened here, and because
+     * the widget itself cannot be tapped into anything else: it shows a time
+     * and takes no input.
+     *
+     * <p>There is always a tap. Attaching none where nothing resolves was the
+     * earlier behaviour and looked like the honest one, but the two ways this
+     * app has really lost its tap both presented as a widget that ignores a
+     * finger — so an absent tap is a fault's disguise rather than a statement.
+     * {@link UnansweredTap} says why nothing opened; that it is our receiver
+     * and not our activity is explained there.
      *
      * <p>{@link AlarmClock#ACTION_SHOW_ALARMS} rather than a named component.
      * This used to walk a table of six vendor clock packages asking the package
@@ -103,22 +107,25 @@ public final class WidgetPicture {
      * for, and needs no table to keep up to date — only the one {@code
      * <queries>} entry that makes its handler visible to ask about.
      *
-     * <p>Resolved rather than sent blind so that a device with no handler gets
-     * no tap at all, instead of a widget that swallows one. {@link
+     * <p>Resolved here, as the picture is built, because this is where one of
+     * the two intents has to be chosen. The choice could be deferred instead —
+     * hang the receiver on every tap and let it resolve on arrival — and that
+     * shape is workable rather than impossible; {@link UnansweredTap} is where
+     * the reason for rejecting it is written down. {@link
      * PackageManager#MATCH_DEFAULT_ONLY} asks the question the launcher will
      * later ask when it sends this: not "does any filter mention the action"
      * but "would starting it find someone".
      *
      * <p>Immutable, because nothing that receives this is meant to add to it.
      */
-    @Nullable
-    private static PendingIntent openAlarmList(@NonNull Context context) {
+    @NonNull
+    private static PendingIntent tap(@NonNull Context context) {
         final Intent alarms = new Intent(AlarmClock.ACTION_SHOW_ALARMS)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
         if (context.getPackageManager().resolveActivity(alarms, PackageManager.MATCH_DEFAULT_ONLY)
                 == null) {
-            return null;
+            return UnansweredTap.pendingComplaint(context);
         }
 
         return PendingIntent.getActivity(context, 0, alarms, PendingIntent.FLAG_IMMUTABLE);

@@ -9,8 +9,11 @@ import static info.staticfree.android.twentyfourhour.dial.Shading.A_QUARTER_OF_T
 import static info.staticfree.android.twentyfourhour.dial.Shading.SMALL_HOURS_FROM;
 import static info.staticfree.android.twentyfourhour.dial.Shading.SMALL_HOURS_TO;
 import static info.staticfree.android.twentyfourhour.dial.Shading.percentageDarkerIn;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
 
@@ -44,6 +47,7 @@ import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
 
 import java.util.Arrays;
+import java.util.List;
 
 import info.staticfree.android.twentyfourhour.R;
 import info.staticfree.android.twentyfourhour.dial.Shading;
@@ -225,23 +229,44 @@ public class WidgetPictureTest {
      * a question this app is allowed to ask at API 30 — and answered null on
      * every modern phone while this suite went on passing, because {@code
      * ShadowPackageManager} does not filter by package visibility.
+     *
+     * <p><strong>Tapped rather than merely counted.</strong> That a picture has
+     * a tap stopped being news the moment every picture had one, so what is
+     * asked here is where the tap goes — and the answer has to be <em>straight
+     * to the clock app</em>. Nothing is broadcast on this path, which is the
+     * assertion that pins the direct intent: routing a working tap through
+     * {@link UnansweredTap} would read as working here and would put this app
+     * in the way of an activity start it has no business being in the way of.
      */
     @Test
     public void thePictureOpensTheAlarmListWhenTheDeviceHasOne() {
         givenAnAlarmListIsInstalled();
 
-        assertTrue("a device with an alarm list should give the picture a tap",
-                inflate().hasOnClickListeners());
+        tap(inflate());
+
+        assertEquals("a tap should open whatever shows alarms", AlarmClock.ACTION_SHOW_ALARMS,
+                activityStarted().getAction());
+        assertEquals("and should get there without a hop through this app", emptyList(),
+                broadcastsSent());
     }
 
     /**
-     * And carries no tap when there is no alarm list to open — the widget is
-     * then a picture and nothing else, rather than one that swallows a tap.
+     * And says so when there is no alarm list to open, rather than being a tap
+     * that goes nowhere. Both times this app lost its tap on the phone the
+     * symptom was identical to a widget that had never had one, so the picture
+     * now always carries a tap and the one it carries here is a complaint.
+     *
+     * <p>Only the component is asserted. What {@link UnansweredTap} then says
+     * is its own test's business; all the picture owes is having addressed the
+     * envelope.
      */
     @Test
-    public void thePictureHasNoTapWhenTheDeviceHasNoAlarmList() {
-        assertFalse("with no alarm list installed there is nothing to tap through to",
-                inflate().hasOnClickListeners());
+    public void theTapSaysSoWhenTheDeviceHasNoAlarmList() {
+        tap(inflate());
+
+        assertEquals("with nothing to open, a tap should reach the receiver that says so",
+                singletonList(new ComponentName(context(), UnansweredTap.class)),
+                broadcastsSent().stream().map(Intent::getComponent).collect(toList()));
     }
 
     /**
@@ -331,6 +356,41 @@ public class WidgetPictureTest {
     private static int smallerDisplayDimension() {
         DisplayMetrics display = context().getResources().getDisplayMetrics();
         return Math.min(display.widthPixels, display.heightPixels);
+    }
+
+    /**
+     * Taps the widget, the way the host does: the click listener {@code
+     * RemoteViews} attached sends the {@link android.app.PendingIntent}, and
+     * where that lands is what the two tap tests read back.
+     *
+     * <p>The precondition is asserted here rather than in either test, because
+     * it is the same for both and because a picture with no tap would otherwise
+     * fail them as "nothing was sent" — true, and the wrong story.
+     */
+    private static void tap(@NonNull ImageView clock) {
+        assertTrue("every picture should carry a tap", clock.hasOnClickListeners());
+
+        clock.performClick();
+    }
+
+    /** Everything this app has broadcast, in order. */
+    @NonNull
+    private static List<Intent> broadcastsSent() {
+        return shadowOf(RuntimeEnvironment.getApplication()).getBroadcastIntents();
+    }
+
+    /**
+     * The activity a tap asked for. Fails rather than returning null, the way
+     * {@code Alarms.only} does: a tap that went somewhere else should read as
+     * that, not as a null dereference three lines later.
+     */
+    @NonNull
+    private static Intent activityStarted() {
+        Intent started = shadowOf(RuntimeEnvironment.getApplication()).getNextStartedActivity();
+
+        assertNotNull("the tap should have started an activity", started);
+
+        return started;
     }
 
     @NonNull

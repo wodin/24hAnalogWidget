@@ -5,6 +5,7 @@ import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 
@@ -22,6 +23,7 @@ import java.util.List;
 import info.staticfree.android.twentyfourhour.observer.LastKnownObserver;
 import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
 import info.staticfree.android.twentyfourhour.sun.London;
+import info.staticfree.android.twentyfourhour.widget.UnansweredTap;
 
 /**
  * That every diagnosis this app writes arrives where the README says to look.
@@ -43,8 +45,8 @@ import info.staticfree.android.twentyfourhour.sun.London;
  * claim is that the sites agree, and a claim about several files does not live
  * in any one of them.
  *
- * <p><strong>What it does not reach.</strong> There is a third diagnosis, on
- * the refused read in {@code LastKnownObserver}, and no case here drives it: the
+ * <p><strong>What it does not reach.</strong> One diagnosis has no case here —
+ * the refused read in {@code LastKnownObserver} — and it is left out because the
  * shadow that raises a {@link SecurityException} is
  * {@code LastKnownObserverTest}'s and {@code Fixes} says in as many words that
  * it stays there, so reaching it from here would mean a second copy of what the
@@ -114,6 +116,19 @@ public class DiagnosisTest {
         overlay.draw(new Canvas(blankBitmap()), SIDE_PX, London.SOMETIME_THAT_DAY, London.ZONE);
 
         assertEquals("a place with no sun path should say so under the published tag",
+                singletonList(Diagnosis.TAG), tagsWritten());
+    }
+
+    /**
+     * A tap that found nothing to open says so under the same tag, which is the
+     * whole reason the receiver it reaches exists. This is the newest of the
+     * sites and so the likeliest to have been written with a tag of its own.
+     */
+    @Test
+    public void theUnansweredTapIsDiagnosedUnderTheOneTag() {
+        new UnansweredTap().onReceive(context(), new Intent());
+
+        assertEquals("a tap with nothing to open should say so under the published tag",
                 singletonList(Diagnosis.TAG), tagsWritten());
     }
 
