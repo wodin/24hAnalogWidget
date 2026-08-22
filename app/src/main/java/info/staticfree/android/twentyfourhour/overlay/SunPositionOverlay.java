@@ -47,6 +47,13 @@ import info.staticfree.android.twentyfourhour.sun.SunPath;
  * moment falls, and works out neither itself. The only arithmetic left here is
  * turning a dial angle into the frame {@link Canvas#drawArc} measures in, which
  * is a fact about the drawing primitive rather than about the dial.
+ *
+ * <p><strong>Nothing tunes what this draws.</strong> Four setters once did — an
+ * inset scale, a shade alpha and a switch each for the Twilight bands and the
+ * High noon mark — all of them configuring upstream's Wear watch face, which
+ * {@code docs/adr/0001-drop-wear-support.md} dropped. The switches went, not what
+ * they switched: every arc they guarded is still drawn, unconditionally.
+ * {@link #setObserver} is not a knob; it pushes in what to draw rather than how.
  */
 public class SunPositionOverlay implements DialOverlay {
     private static final String TAG = SunPositionOverlay.class.getSimpleName();
@@ -58,6 +65,9 @@ public class SunPositionOverlay implements DialOverlay {
      * measures clockwise from due east. Three quarters of a turn between them.
      */
     private static final float UP_TO_EAST = 270;
+
+    /** How far out the overlay reaches, as a fraction of the dial's radius. */
+    private static final float INSET_RADIUS_FRACTION = 0.5f;
 
     private final RectF inset = new RectF();
 
@@ -77,30 +87,10 @@ public class SunPositionOverlay implements DialOverlay {
         OVERLAY_SUNSET.setStyle(Paint.Style.FILL);
     }
 
-    private float scale = 0.5f;
-    private boolean showTwilight = true;
-    private boolean showHighNoon = true;
-
     public SunPositionOverlay(@NonNull Context context) {
         OVERLAY_NO_INFO_PAINT.setShader(new BitmapShader(BitmapFactory
                 .decodeResource(context.getResources(), R.drawable.no_sunrise_sunset_tile),
                 Shader.TileMode.REPEAT, Shader.TileMode.REPEAT));
-    }
-
-    public void setScale(float scale) {
-        this.scale = scale;
-    }
-
-    public void setShadeAlpha(int alpha) {
-        OVERLAY_SUNSET.setAlpha(alpha);
-    }
-
-    public void setShowTwilight(boolean showTwilight) {
-        this.showTwilight = showTwilight;
-    }
-
-    public void setShowHighNoon(boolean showHighNoon) {
-        this.showHighNoon = showHighNoon;
     }
 
     /**
@@ -124,7 +114,7 @@ public class SunPositionOverlay implements DialOverlay {
     public void draw(@NonNull Canvas canvas, int side, @NonNull Instant instant,
             @NonNull ZoneId zone) {
         int centre = side / 2;
-        int insetRadius = (int) (side / 2.0f * scale);
+        int insetRadius = (int) (side / 2.0f * INSET_RADIUS_FRACTION);
         inset.set(centre - insetRadius, centre - insetRadius, centre + insetRadius,
                 centre + insetRadius);
 
@@ -145,26 +135,22 @@ public class SunPositionOverlay implements DialOverlay {
             return;
         }
 
-        float morningSunAngle = arcAngleFor(path.sunrise());
-        float eveningSunAngle = arcAngleFor(path.sunset());
+        drawInsetArc(canvas, arcAngleFor(path.sunset()), arcAngleFor(path.sunrise()),
+                OVERLAY_SUNSET);
+        drawInsetArc(canvas, arcAngleFor(path.eveningCivilTwilight()),
+                arcAngleFor(path.morningCivilTwilight()), OVERLAY_SUNSET);
+        drawInsetArc(canvas, arcAngleFor(path.eveningNauticalTwilight()),
+                arcAngleFor(path.morningNauticalTwilight()), OVERLAY_SUNSET);
+        drawInsetArc(canvas, arcAngleFor(path.eveningAstronomicalTwilight()),
+                arcAngleFor(path.morningAstronomicalTwilight()), OVERLAY_SUNSET);
 
-        drawInsetArc(canvas, eveningSunAngle, morningSunAngle, OVERLAY_SUNSET);
+        // Marked without asking whether there was a day to mark the middle of.
+        // A SunPath searches back from High noon for its sunrise and forward for
+        // its sunset, so any path in hand has the one strictly before the other.
+        float highNoonAngle = arcAngleFor(path.highNoon());
 
-        if (showTwilight) {
-            drawInsetArc(canvas, arcAngleFor(path.eveningCivilTwilight()),
-                    arcAngleFor(path.morningCivilTwilight()), OVERLAY_SUNSET);
-            drawInsetArc(canvas, arcAngleFor(path.eveningNauticalTwilight()),
-                    arcAngleFor(path.morningNauticalTwilight()), OVERLAY_SUNSET);
-            drawInsetArc(canvas, arcAngleFor(path.eveningAstronomicalTwilight()),
-                    arcAngleFor(path.morningAstronomicalTwilight()), OVERLAY_SUNSET);
-        }
-
-        if (showHighNoon && Math.abs(eveningSunAngle - morningSunAngle) > 0) {
-            float highNoon = arcAngleFor(path.highNoon());
-
-            canvas.drawArc(inset, highNoon - HIGH_NOON_ARC_ANGLE / 2, HIGH_NOON_ARC_ANGLE, true,
-                    OVERLAY_SUN);
-        }
+        canvas.drawArc(inset, highNoonAngle - HIGH_NOON_ARC_ANGLE / 2, HIGH_NOON_ARC_ANGLE, true,
+                OVERLAY_SUN);
     }
 
     private void drawInsetArc(@NonNull Canvas canvas, float startAngle, float endAngle,
