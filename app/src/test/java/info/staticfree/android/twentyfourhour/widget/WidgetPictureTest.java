@@ -81,11 +81,16 @@ public class WidgetPictureTest {
     /**
      * A stock device's clock app, named as the emulator names it. Which package
      * it is does not matter and is never asked: what the picture looks for is
-     * the {@link AlarmClock#ACTION_SHOW_ALARMS} handler, so this component is
-     * only somewhere for that filter to hang.
+     * the {@link AlarmClock#ACTION_SHOW_ALARMS} handler, so {@code ALARM_LIST}
+     * is only somewhere for that filter to hang. {@code FRONT_DOOR} is the same
+     * app's launcher activity — a different activity in the same package, which
+     * is the shape every real clock app has and the one the tap has to tell
+     * apart.
      */
-    private static final ComponentName CLOCK_APP =
+    private static final ComponentName ALARM_LIST =
             new ComponentName("com.android.deskclock", "com.android.deskclock.HandleApiCalls");
+    private static final ComponentName FRONT_DOOR =
+            new ComponentName("com.android.deskclock", "com.android.deskclock.DeskClock");
 
     @Rule
     public final TestRule dialsZone = Shading.inTheDialsZone();
@@ -218,15 +223,23 @@ public class WidgetPictureTest {
     }
 
     /**
-     * A tap opens the device's alarm list, when the device has one to open.
-     * Whether the tap is attached afresh each time, and why it has to be,
+     * A tap opens the device's clock app, when the device has one — and opens
+     * it by its front door, the launcher activity, rather than by the alarm
+     * list. Whether the tap is attached afresh each time, and why it has to be,
      * {@code build} explains.
      *
-     * <p>The handler is registered against the action rather than at a fixed
-     * component, because that is the whole of what the picture asks the
-     * platform. This cannot fail the way the vendor table it replaced did: that
-     * asked six named packages whether they were installed, which stopped being
-     * a question this app is allowed to ask at API 30 — and answered null on
+     * <p>The clock app is registered as two activities, because the tap has to
+     * choose between them and for a while chose wrong: it sent {@link
+     * AlarmClock#ACTION_SHOW_ALARMS} itself, which on the Samsung clock opens a
+     * bare alarm list with no tab bar and no way through to the world clock,
+     * the stopwatch or the timer. The handler is what the picture asks the
+     * platform for; the front door is what it has to open, and this pins that
+     * the intent sent is the launcher's — {@code MAIN}, {@code LAUNCHER}, and
+     * the front door's own component — and not the action it resolved with.
+     *
+     * <p>This cannot fail the way the vendor table it replaced did: that asked
+     * six named packages whether they were installed, which stopped being a
+     * question this app is allowed to ask at API 30 — and answered null on
      * every modern phone while this suite went on passing, because {@code
      * ShadowPackageManager} does not filter by package visibility.
      *
@@ -239,19 +252,41 @@ public class WidgetPictureTest {
      * in the way of an activity start it has no business being in the way of.
      */
     @Test
-    public void thePictureOpensTheAlarmListWhenTheDeviceHasOne() {
-        givenAnAlarmListIsInstalled();
+    public void thePictureOpensTheClockAppByItsFrontDoorWhenTheDeviceHasOne() {
+        givenAClockAppIsInstalled();
 
         tap(inflate());
 
-        assertEquals("a tap should open whatever shows alarms", AlarmClock.ACTION_SHOW_ALARMS,
-                activityStarted().getAction());
+        Intent opened = activityStarted();
+        assertEquals("a tap should open the clock app the way the launcher does",
+                Intent.ACTION_MAIN, opened.getAction());
+        assertTrue("a tap should open the clock app the way the launcher does",
+                opened.hasCategory(Intent.CATEGORY_LAUNCHER));
+        assertEquals("and the clock app it opens is the one that shows alarms", FRONT_DOOR,
+                opened.getComponent());
         assertEquals("and should get there without a hop through this app", emptyList(),
                 broadcastsSent());
     }
 
     /**
-     * And says so when there is no alarm list to open, rather than being a tap
+     * A clock app with no front door — an alarm handler and nothing else — is
+     * opened by the alarm list, since that is all of it there is to open. Not
+     * a phone anyone has met, but the fallback is a line of code that would
+     * otherwise be exercised by nothing, and it is the one path the manifest's
+     * {@code SET_ALARM} still exists for.
+     */
+    @Test
+    public void theTapFallsBackToTheAlarmListWhenTheClockAppHasNoFrontDoor() {
+        givenAnAlarmListIsInstalled();
+
+        tap(inflate());
+
+        assertEquals("with no front door, a tap should open the alarm list itself",
+                AlarmClock.ACTION_SHOW_ALARMS, activityStarted().getAction());
+    }
+
+    /**
+     * And says so when there is no clock app to open, rather than being a tap
      * that goes nowhere. Both times this app lost its tap on the phone the
      * symptom was identical to a widget that had never had one, so the picture
      * now always carries a tap and the one it carries here is a complaint.
@@ -261,7 +296,7 @@ public class WidgetPictureTest {
      * envelope.
      */
     @Test
-    public void theTapSaysSoWhenTheDeviceHasNoAlarmList() {
+    public void theTapSaysSoWhenTheDeviceHasNoClockApp() {
         tap(inflate());
 
         assertEquals("with nothing to open, a tap should reach the receiver that says so",
@@ -270,11 +305,14 @@ public class WidgetPictureTest {
     }
 
     /**
-     * Attaching the tap is only half of opening the alarm list. The activity
+     * The tap's fallback is only half of opening the alarm list. The activity
      * that answers {@link AlarmClock#ACTION_SHOW_ALARMS} is guarded by {@link
      * Manifest.permission#SET_ALARM}, so without it the tap resolves, sends,
      * and is turned away by the activity manager — measured on an A34, where
-     * the widget looked exactly as it had when it carried no tap at all.
+     * the widget looked exactly as it had when it carried no tap at all. The
+     * front door is not guarded, which is why the fault is now confined to
+     * the fallback; it is asserted all the same, because a fallback that is
+     * refused on arrival is no fallback.
      *
      * <p>Asserted against the manifest because there is nowhere else it can be
      * asserted: the permission is not read by any code here, it is checked by
@@ -291,9 +329,25 @@ public class WidgetPictureTest {
     }
 
     /**
-     * Registers a handler for {@link AlarmClock#ACTION_SHOW_ALARMS}, which is
-     * what every phone with a clock app has and what the picture resolves
-     * against.
+     * Registers a clock app the shape every real one has: a handler for
+     * {@link AlarmClock#ACTION_SHOW_ALARMS}, which is what the picture resolves
+     * against, and a launcher activity in the same package, which is what it
+     * opens.
+     */
+    private static void givenAClockAppIsInstalled() {
+        givenAnAlarmListIsInstalled();
+
+        IntentFilter launches = new IntentFilter(Intent.ACTION_MAIN);
+        launches.addCategory(Intent.CATEGORY_LAUNCHER);
+
+        shadowOf(context().getPackageManager()).addActivityIfNotPresent(FRONT_DOOR);
+        shadowOf(context().getPackageManager()).addIntentFilterForActivity(FRONT_DOOR, launches);
+    }
+
+    /**
+     * Registers a handler for {@link AlarmClock#ACTION_SHOW_ALARMS} and nothing
+     * else: the clock app the fallback exists for, and half of the one every
+     * phone has.
      *
      * <p>The filter carries {@link android.content.Intent#CATEGORY_DEFAULT} as
      * well as the action, because an implicit intent is only resolvable if some
@@ -304,8 +358,8 @@ public class WidgetPictureTest {
         IntentFilter showsAlarms = new IntentFilter(AlarmClock.ACTION_SHOW_ALARMS);
         showsAlarms.addCategory(Intent.CATEGORY_DEFAULT);
 
-        shadowOf(context().getPackageManager()).addActivityIfNotPresent(CLOCK_APP);
-        shadowOf(context().getPackageManager()).addIntentFilterForActivity(CLOCK_APP, showsAlarms);
+        shadowOf(context().getPackageManager()).addActivityIfNotPresent(ALARM_LIST);
+        shadowOf(context().getPackageManager()).addIntentFilterForActivity(ALARM_LIST, showsAlarms);
     }
 
     /**

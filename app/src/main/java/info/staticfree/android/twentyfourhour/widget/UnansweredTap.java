@@ -50,7 +50,7 @@ import info.staticfree.android.twentyfourhour.Diagnosis;
  *
  * <p><strong>Why the working tap does not come through here.</strong> The
  * obvious shape is one receiver for every tap, deciding on arrival whether to
- * open the alarm list or to complain. It was rejected: this receiver would then
+ * open the clock app or to complain. It was rejected: this receiver would then
  * have to start an activity from the background, which API 29 restricted and
  * API 34 restricted again, so a tap that works today would rest on a rule that
  * keeps being narrowed. {@link WidgetPicture} attaches the direct intent when

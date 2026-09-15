@@ -20,6 +20,7 @@ import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Rect;
@@ -42,7 +43,7 @@ import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
 
 /**
  * What one widget shows: a dial drawn at this moment, and a tap — which opens
- * the device's alarm list, or, on a device where nothing answers, says as much.
+ * the device's clock app, or, on a device where nothing answers, says as much.
  *
  * <p>The unit is one widget rather than all of them, because the cell is what
  * decides the picture and each widget has a cell of its own. Nothing here
@@ -84,11 +85,11 @@ public final class WidgetPicture {
     }
 
     /**
-     * A tap that opens whatever shows alarms on this device, or — where nothing
-     * does — one that reaches {@link UnansweredTap} and says so. The alarm list
-     * because that is what a clock widget has always opened here, and because
-     * the widget itself cannot be tapped into anything else: it shows a time
-     * and takes no input.
+     * A tap that opens this device's clock app, or — where there is none — one
+     * that reaches {@link UnansweredTap} and says so. The clock app because that
+     * is what a clock widget has always opened here, and because the widget
+     * itself cannot be tapped into anything else: it shows a time and takes no
+     * input.
      *
      * <p>There is always a tap. Attaching none where nothing resolves was the
      * earlier behaviour and looked like the honest one, but the two ways this
@@ -97,38 +98,80 @@ public final class WidgetPicture {
      * {@link UnansweredTap} says why nothing opened; that it is our receiver
      * and not our activity is explained there.
      *
-     * <p>{@link AlarmClock#ACTION_SHOW_ALARMS} rather than a named component.
-     * This used to walk a table of six vendor clock packages asking the package
-     * manager whether each was installed, which was the only way to do it in
-     * 2011 and stopped working at API 30: another package is invisible to that
-     * question unless the manifest declares a {@code <queries>} for it, so all
-     * six answered "not installed" and the widget quietly lost its tap. The
-     * action has been platform since API 19, is what every clock app registers
-     * for, and needs no table to keep up to date — only the one {@code
-     * <queries>} entry that makes its handler visible to ask about.
-     *
      * <p>Resolved here, as the picture is built, because this is where one of
      * the two intents has to be chosen. The choice could be deferred instead —
      * hang the receiver on every tap and let it resolve on arrival — and that
      * shape is workable rather than impossible; {@link UnansweredTap} is where
-     * the reason for rejecting it is written down. {@link
-     * PackageManager#MATCH_DEFAULT_ONLY} asks the question the launcher will
-     * later ask when it sends this: not "does any filter mention the action"
-     * but "would starting it find someone".
+     * the reason for rejecting it is written down.
      *
      * <p>Immutable, because nothing that receives this is meant to add to it.
      */
     @NonNull
     private static PendingIntent tap(@NonNull Context context) {
-        final Intent alarms = new Intent(AlarmClock.ACTION_SHOW_ALARMS)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        final Intent clockApp = clockApp(context);
 
-        if (context.getPackageManager().resolveActivity(alarms, PackageManager.MATCH_DEFAULT_ONLY)
-                == null) {
+        if (clockApp == null) {
             return UnansweredTap.pendingComplaint(context);
         }
 
-        return PendingIntent.getActivity(context, 0, alarms, PendingIntent.FLAG_IMMUTABLE);
+        return PendingIntent.getActivity(context, 0, clockApp, PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /**
+     * The intent that opens this device's clock app, by its front door, or
+     * {@code null} where the device has none.
+     *
+     * <p>{@link AlarmClock#ACTION_SHOW_ALARMS} is how the clock app is
+     * <em>found</em>, and is deliberately not how it is opened. This used to
+     * walk a table of six vendor clock packages asking the package manager
+     * whether each was installed, which was the only way to do it in 2011 and
+     * stopped working at API 30: another package is invisible to that question
+     * unless the manifest declares a {@code <queries>} for it, so all six
+     * answered "not installed" and the widget quietly lost its tap. The action
+     * has been platform since API 19, is what every clock app registers for,
+     * and needs no table to keep up to date — only the one {@code <queries>}
+     * entry that makes its handler visible to ask about.
+     *
+     * <p>For a while the tap sent that action itself, and that opened the wrong
+     * screen. A clock app answers {@code SHOW_ALARMS} with whatever activity it
+     * keeps for other apps' requests, and on the Samsung clock that is a bare
+     * alarm list in a task of its own — no tab bar, and no way through to the
+     * world clock, the stopwatch or the timer that the app's own front door
+     * has. The table this replaced never had that problem because it named the
+     * launcher activity, so its tap was the clock icon's tap. This is that
+     * again: the package that answers the action, opened the way the launcher
+     * opens it. {@link PackageManager#getLaunchIntentForPackage} builds the
+     * same {@code MAIN}/{@code LAUNCHER} intent the launcher would, already
+     * flagged {@code NEW_TASK}, and can see the package because visibility is
+     * granted per package rather than per activity: a {@code <queries>} entry
+     * that matches one of its filters makes the whole of it visible.
+     *
+     * <p>The action itself is sent only as a fallback, for a clock app with no
+     * launcher activity at all — an alarm handler and nothing else, which
+     * exists in principle and has not been met. That path is why the manifest
+     * still holds {@code SET_ALARM}: the handler is guarded by it and the front
+     * door is not.
+     *
+     * <p>{@link PackageManager#MATCH_DEFAULT_ONLY} asks the question the
+     * launcher will later ask when it sends this: not "does any filter mention
+     * the action" but "would starting it find someone".
+     */
+    @Nullable
+    private static Intent clockApp(@NonNull Context context) {
+        final PackageManager packages = context.getPackageManager();
+        final Intent alarms = new Intent(AlarmClock.ACTION_SHOW_ALARMS)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        final ResolveInfo showsAlarms =
+                packages.resolveActivity(alarms, PackageManager.MATCH_DEFAULT_ONLY);
+
+        if (showsAlarms == null) {
+            return null;
+        }
+
+        final Intent frontDoor =
+                packages.getLaunchIntentForPackage(showsAlarms.activityInfo.packageName);
+
+        return frontDoor != null ? frontDoor : alarms;
     }
 
     /**

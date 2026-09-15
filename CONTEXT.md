@@ -81,7 +81,7 @@ accepts is a single tap.
 _Avoid_: applet, tile, gadget
 
 **Tap**:
-The single gesture a Widget accepts, and the device's alarm list it opens. Rare
+The single gesture a Widget accepts, and the device's clock app it opens. Rare
 by construction, which is what separates it from the Tick: a tap happens only
 when a person makes it happen, so what is worth saying once on a tap would be
 said 1440 times a day on a tick. There is always one attached, even where

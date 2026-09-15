@@ -104,12 +104,16 @@ the two you have is answered below. See
 [ADR-0003](docs/adr/0003-the-widget-tick.md).
 
 A fourth permission, `com.android.alarm.permission.SET_ALARM`, needs nothing
-done to it. Tapping the widget opens the device's alarm list, and the activity
-that answers is guarded by it; it is a normal permission, so it is granted on
-install. Without it the tap is refused after this app is out of the picture,
-which makes it the one fault below that this app cannot report on: it is
-`system_server` that writes a `Permission Denial` and nothing of ours that
-writes anything, which is how it was found here.
+done to it. Tapping the widget opens the device's clock app, found by asking
+who shows alarms and opened the way the launcher opens it, so that the whole
+app comes up — alarms, world clock, stopwatch and timer — rather than the bare
+alarm list a clock app keeps for other apps' requests. Only a clock app with no
+launcher activity is opened by that request instead, and the activity that
+answers it is guarded by this permission; it is a normal permission, so it is
+granted on install. Without it that fallback is refused after this app is out
+of the picture, which makes it the one fault below that this app cannot report
+on: it is `system_server` that writes a `Permission Denial` and nothing of ours
+that writes anything, which is how it was found here.
 
 Diagnosis
 ---------

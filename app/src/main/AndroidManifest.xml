@@ -35,11 +35,13 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <!--
-        Held to open the alarm list, not to set an alarm - the activity that
-        answers SHOW_ALARMS is guarded by this, so without it the tap resolves,
-        sends, and is refused by the activity manager with nothing on screen to
-        say so. Normal rather than dangerous, so it is granted on install and
-        there is nothing to grant by hand.
+        Held for the tap's fallback, not to set an alarm. The tap opens the
+        clock app by its launcher activity, which nothing guards; only on a
+        clock app that has no launcher activity does it send SHOW_ALARMS
+        itself, and the activity that answers that is guarded by this - so
+        without it the fallback resolves, sends, and is refused by the activity
+        manager with nothing on screen to say so. Normal rather than dangerous,
+        so it is granted on install and there is nothing to grant by hand.
     -->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
 
@@ -50,6 +52,11 @@
         rather than failing - which is how it went missing. Declared as an
         intent rather than a package name so that it keeps naming the right app
         on a phone whose clock is the vendor's, or is one the user chose.
+
+        Visibility is granted per package, not per activity: matching one of
+        the clock app's filters makes the whole app visible, including the
+        launcher activity the tap actually opens. So the one entry covers both
+        questions the picture asks, and there is no second entry for MAIN.
     -->
     <queries>
         <intent>
