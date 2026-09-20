@@ -107,13 +107,16 @@ A fourth permission, `com.android.alarm.permission.SET_ALARM`, needs nothing
 done to it. Tapping the widget opens the device's clock app, found by asking
 who shows alarms and opened the way the launcher opens it, so that the whole
 app comes up — alarms, world clock, stopwatch and timer — rather than the bare
-alarm list a clock app keeps for other apps' requests. Only a clock app with no
-launcher activity is opened by that request instead, and the activity that
-answers it is guarded by this permission; it is a normal permission, so it is
-granted on install. Without it that fallback is refused after this app is out
-of the picture, which makes it the one fault below that this app cannot report
-on: it is `system_server` that writes a `Permission Denial` and nothing of ours
-that writes anything, which is how it was found here.
+alarm list some clock apps, Samsung's among them, keep for other apps' requests.
+Every app that shows alarms is asked, and the first with a launcher activity is
+the one opened; only when none has one is the request sent instead, and the
+activity that answers it is guarded by this permission; it is a normal
+permission, so it is granted on install. Without it that fallback is refused
+after this app is out of the picture. Anything refused after the tap is sent is
+`system_server`'s to report and not ours — it writes a `Permission Denial`, or
+nothing at all, and nothing of ours writes anything, which is how this one was
+found here. Opening the app says which of its three shapes the tap has, so a
+tap that is refused can at least be told from one that was never attached.
 
 Diagnosis
 ---------
@@ -144,8 +147,10 @@ whose only job is to write a line saying so. It names the manifest's `<queries>`
 element as the first thing to check, because that is how the tap went missing
 here before, and because the package manager gives the same answer whether the
 phone has no clock app or this app is merely not allowed to see the one it has.
-The other way a tap dies — `SET_ALARM` missing — never reaches that receiver,
-and is the exception noted above.
+A tap refused after it is sent — `SET_ALARM` missing on the fallback, or a
+clock app gone between one tick and the next — never reaches that receiver, and
+is the exception noted above. Opening the app says which of the three the tap
+carries: a clock app by name, the bare alarm list, or nothing.
 
 **A minute hand that cannot keep exact time.** Opening the app states on screen
 whether the tick is punctual, in both directions — a line that appears only when

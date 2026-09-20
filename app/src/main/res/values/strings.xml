@@ -19,4 +19,16 @@
     <string name="tick_keeps_exact_time">The minute hand keeps exact time.</string>
     <string name="tick_cannot_keep_exact_time">The minute hand can fall a minute or more behind: SCHEDULE_EXACT_ALARM is not granted. The command that grants it is in logcat, under %1$s.</string>
 
+    <!--
+        Three states of one answer, all shown; WidgetDemo.reportWhatTheTapOpens
+        has why the healthy one is.
+
+        %1$s in the first is the clock app's package name, not its label: the
+        line is a diagnosis, and the package is what a Permission Denial in
+        logcat would name. %1$s in the last is Diagnosis.TAG, as above.
+    -->
+    <string name="tap_opens_clock_app">Tapping the widget opens %1$s.</string>
+    <string name="tap_opens_alarm_list_only">Tapping the widget opens the bare alarm list: no clock app here has a launcher activity.</string>
+    <string name="tap_opens_nothing">Tapping the widget opens nothing: no clock app is visible to this app. Each tap says so in logcat, under %1$s.</string>
+
 </resources>

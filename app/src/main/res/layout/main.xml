@@ -29,7 +29,7 @@
         android:id="@+id/intro_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/tick_health"
+        android:layout_above="@+id/tap_health"
         android:layout_alignParentStart="true"
         android:gravity="center"
         android:paddingStart="10sp"
@@ -38,6 +38,24 @@
         android:paddingTop="5sp"
         android:text="@string/intro_text"
         android:textAppearance="?android:attr/textAppearanceMedium" />
+
+    <!--
+        The tap's line: which of its three shapes the widget's tap has on this
+        phone. Same shape as the tick's line below, and filled in the same way,
+        on every branch.
+    -->
+    <TextView
+        android:id="@+id/tap_health"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/tick_health"
+        android:layout_alignParentStart="true"
+        android:gravity="center"
+        android:paddingStart="10sp"
+        android:paddingEnd="10sp"
+        android:paddingBottom="5sp"
+        android:paddingTop="0sp"
+        android:textAppearance="?android:attr/textAppearanceSmall" />
 
     <!--
         No android:text. WidgetDemo fills this in during onCreate and fills it

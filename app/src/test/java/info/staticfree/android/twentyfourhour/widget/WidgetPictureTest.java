@@ -80,17 +80,28 @@ public class WidgetPictureTest {
 
     /**
      * A stock device's clock app, named as the emulator names it. Which package
-     * it is does not matter and is never asked: what the picture looks for is
-     * the {@link AlarmClock#ACTION_SHOW_ALARMS} handler, so {@code ALARM_LIST}
-     * is only somewhere for that filter to hang. {@code FRONT_DOOR} is the same
-     * app's launcher activity — a different activity in the same package, which
-     * is the shape every real clock app has and the one the tap has to tell
-     * apart.
+     * it is does not matter, but that both components share one does: what the
+     * picture looks for is the {@link AlarmClock#ACTION_SHOW_ALARMS} handler,
+     * and what it opens is the launcher activity of whatever package that
+     * handler is in. {@code ALARM_LIST} is where the filter hangs; {@code
+     * FRONT_DOOR} is the same app's launcher activity — a different activity in
+     * the same package, which is the shape every real clock app has and the one
+     * the tap has to tell apart.
+     *
+     * <p>{@code BARE_ALARM_LIST} is a second handler in a package of its own
+     * with no launcher activity: the clock app the fallback exists for, and,
+     * installed beside the first, the shape that makes the picture choose. Its
+     * package is named to sort before the other's, because that is the order
+     * {@code ShadowPackageManager} answers a query in — by component name, not
+     * by registration — and the test that installs both needs the bare one met
+     * first.
      */
     private static final ComponentName ALARM_LIST =
             new ComponentName("com.android.deskclock", "com.android.deskclock.HandleApiCalls");
     private static final ComponentName FRONT_DOOR =
             new ComponentName("com.android.deskclock", "com.android.deskclock.DeskClock");
+    private static final ComponentName BARE_ALARM_LIST =
+            new ComponentName("com.acme.alarms", "com.acme.alarms.Alarms");
 
     @Rule
     public final TestRule dialsZone = Shading.inTheDialsZone();
@@ -269,6 +280,33 @@ public class WidgetPictureTest {
     }
 
     /**
+     * With two handlers installed, the tap opens a front door if any handler
+     * has one. Two clock apps and no default is a phone people have — a
+     * Samsung with the Google clock added — and on it {@code resolveActivity}
+     * names neither app but the system's chooser, whose package has no
+     * launcher activity; a picture that asked only that would fall through to
+     * sending the action, and the chooser would hand back the bare alarm list.
+     * So the picture walks every handler instead, and this pins that it does:
+     * the bare one sorts first, so a picture that stopped at the first handler
+     * would send the action, and the assertion is the front door.
+     *
+     * <p>Robolectric cannot stage the chooser itself — its package manager
+     * answers {@code resolveActivity} with the first match rather than a
+     * resolver — so what is asserted is the property the walk guarantees, not
+     * the device behaviour that made it necessary.
+     */
+    @Test
+    public void theTapOpensAFrontDoorWhenAnyOfTwoHandlersHasOne() {
+        givenAnAlarmListIsInstalled(BARE_ALARM_LIST);
+        givenAClockAppIsInstalled();
+
+        tap(inflate());
+
+        assertEquals("with two handlers, a tap should open the one with a front door",
+                FRONT_DOOR, activityStarted().getComponent());
+    }
+
+    /**
      * A clock app with no front door — an alarm handler and nothing else — is
      * opened by the alarm list, since that is all of it there is to open. Not
      * a phone anyone has met, but the fallback is a line of code that would
@@ -283,6 +321,8 @@ public class WidgetPictureTest {
 
         assertEquals("with no front door, a tap should open the alarm list itself",
                 AlarmClock.ACTION_SHOW_ALARMS, activityStarted().getAction());
+        assertEquals("and should get there without a hop through this app", emptyList(),
+                broadcastsSent());
     }
 
     /**
@@ -355,11 +395,15 @@ public class WidgetPictureTest {
      * startActivity} would find anyone, which is the question being asked.
      */
     private static void givenAnAlarmListIsInstalled() {
+        givenAnAlarmListIsInstalled(ALARM_LIST);
+    }
+
+    private static void givenAnAlarmListIsInstalled(@NonNull ComponentName alarmList) {
         IntentFilter showsAlarms = new IntentFilter(AlarmClock.ACTION_SHOW_ALARMS);
         showsAlarms.addCategory(Intent.CATEGORY_DEFAULT);
 
-        shadowOf(context().getPackageManager()).addActivityIfNotPresent(ALARM_LIST);
-        shadowOf(context().getPackageManager()).addIntentFilterForActivity(ALARM_LIST, showsAlarms);
+        shadowOf(context().getPackageManager()).addActivityIfNotPresent(alarmList);
+        shadowOf(context().getPackageManager()).addIntentFilterForActivity(alarmList, showsAlarms);
     }
 
     /**

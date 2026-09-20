@@ -35,6 +35,7 @@ import androidx.annotation.Nullable;
 
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.List;
 
 import info.staticfree.android.twentyfourhour.R;
 import info.staticfree.android.twentyfourhour.dial.Dial;
@@ -146,32 +147,53 @@ public final class WidgetPicture {
      * granted per package rather than per activity: a {@code <queries>} entry
      * that matches one of its filters makes the whole of it visible.
      *
-     * <p>The action itself is sent only as a fallback, for a clock app with no
+     * <p>Every handler is asked, not just the one {@link
+     * PackageManager#resolveActivity} would name. With two clock apps installed
+     * and no default chosen — a Samsung with the Google clock added, which is a
+     * phone people have — {@code resolveActivity} does not name either of them:
+     * it names the system's chooser, whose package has no launcher activity, so
+     * the tap would fall through to sending the action, and the chooser would
+     * hand the person the bare alarm list all over again. So the handlers are
+     * walked and the first with a front door wins. Which of two clock apps that
+     * is, is the package manager's order to decide; opening one of them whole
+     * beats opening either of them bare.
+     *
+     * <p>The action itself is sent only as a fallback, when no handler has a
      * launcher activity at all — an alarm handler and nothing else, which
      * exists in principle and has not been met. That path is why the manifest
      * still holds {@code SET_ALARM}: the handler is guarded by it and the front
      * door is not.
      *
      * <p>{@link PackageManager#MATCH_DEFAULT_ONLY} asks the question the
-     * launcher will later ask when it sends this: not "does any filter mention
+     * launcher will ask if it is ever sent this: not "does any filter mention
      * the action" but "would starting it find someone".
+     *
+     * <p>Public for one reader besides {@link #tap}: the demo, which asks this
+     * once per launch and says on screen which of the three the tap carries.
+     * Nothing else is meant to call it, and nothing about a picture is.
      */
     @Nullable
-    private static Intent clockApp(@NonNull Context context) {
+    public static Intent clockApp(@NonNull Context context) {
         final PackageManager packages = context.getPackageManager();
         final Intent alarms = new Intent(AlarmClock.ACTION_SHOW_ALARMS)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        final ResolveInfo showsAlarms =
-                packages.resolveActivity(alarms, PackageManager.MATCH_DEFAULT_ONLY);
+        final List<ResolveInfo> showAlarms =
+                packages.queryIntentActivities(alarms, PackageManager.MATCH_DEFAULT_ONLY);
 
-        if (showsAlarms == null) {
+        if (showAlarms.isEmpty()) {
             return null;
         }
 
-        final Intent frontDoor =
-                packages.getLaunchIntentForPackage(showsAlarms.activityInfo.packageName);
+        for (ResolveInfo showsAlarms : showAlarms) {
+            final Intent frontDoor =
+                    packages.getLaunchIntentForPackage(showsAlarms.activityInfo.packageName);
 
-        return frontDoor != null ? frontDoor : alarms;
+            if (frontDoor != null) {
+                return frontDoor;
+            }
+        }
+
+        return alarms;
     }
 
     /**

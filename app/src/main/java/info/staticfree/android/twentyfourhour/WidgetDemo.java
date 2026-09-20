@@ -18,6 +18,7 @@ package info.staticfree.android.twentyfourhour;
  */
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
@@ -27,6 +28,7 @@ import info.staticfree.android.twentyfourhour.dial.DialView;
 import info.staticfree.android.twentyfourhour.observer.LastKnownObserver;
 import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
 import info.staticfree.android.twentyfourhour.widget.Tick;
+import info.staticfree.android.twentyfourhour.widget.WidgetPicture;
 
 /**
  * The dial on a screen of its own, showing what the widget shows.
@@ -78,6 +80,50 @@ public class WidgetDemo extends Activity {
         dialView.setDial(Dial.createStandard(this, sun));
 
         reportWhetherTheTickKeepsTime();
+        reportWhatTheTapOpens();
+    }
+
+    /**
+     * Says on screen which of its three shapes the widget's tap has here, and
+     * names the component in {@code logcat}.
+     *
+     * <p>The tap can open a clock app by its front door, open the bare alarm
+     * list because no clock app has one, or reach {@code UnansweredTap}
+     * because nothing answers at all. From the homescreen the first two look
+     * identical until tapped and the third says so only in the log, and the
+     * picture that chooses is rebuilt once a minute, so it cannot be the one
+     * to say — {@code CONTEXT.md} has why a tick may not speak. This is the
+     * app's one person-triggered reading, so it says here, once per launch.
+     *
+     * <p>All three states are shown, for the reason the tick's line shows
+     * both of its own. The log line names the package rather than the app's
+     * label, because it is read beside a {@code Permission Denial} that names
+     * the package too.
+     */
+    private void reportWhatTheTapOpens() {
+        final TextView health = findViewById(R.id.tap_health);
+        final Intent opens = WidgetPicture.clockApp(this);
+
+        if (opens == null) {
+            health.setText(getString(R.string.tap_opens_nothing, Diagnosis.TAG));
+            Log.w(Diagnosis.TAG, "the tap opens nothing: no activity answers SHOW_ALARMS, "
+                    + "or none is visible to this app");
+
+            return;
+        }
+
+        if (opens.getComponent() == null) {
+            health.setText(R.string.tap_opens_alarm_list_only);
+            Log.w(Diagnosis.TAG, "the tap sends " + opens.getAction()
+                    + " itself: no app that answers it has a launcher activity");
+
+            return;
+        }
+
+        final String clockApp = opens.getComponent().getPackageName();
+
+        health.setText(getString(R.string.tap_opens_clock_app, clockApp));
+        Log.i(Diagnosis.TAG, "the tap opens " + opens.getComponent().flattenToShortString());
     }
 
     /**

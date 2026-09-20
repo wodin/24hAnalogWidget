@@ -36,8 +36,8 @@
 
     <!--
         Held for the tap's fallback, not to set an alarm. The tap opens the
-        clock app by its launcher activity, which nothing guards; only on a
-        clock app that has no launcher activity does it send SHOW_ALARMS
+        clock app by its launcher activity, which nothing guards; only when no
+        app that shows alarms has a launcher activity does it send SHOW_ALARMS
         itself, and the activity that answers that is guarded by this - so
         without it the fallback resolves, sends, and is refused by the activity
         manager with nothing on screen to say so. Normal rather than dangerous,

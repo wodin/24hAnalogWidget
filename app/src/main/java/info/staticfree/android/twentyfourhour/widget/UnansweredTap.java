@@ -43,20 +43,22 @@ import info.staticfree.android.twentyfourhour.Diagnosis;
  * list unresolvable, so {@link WidgetPicture} hangs this receiver on the
  * picture and a tap arrives to be complained about. A missing
  * {@code SET_ALARM} does not: the intent resolves, the direct tap is attached,
- * and the activity manager turns it away afterwards without any code of ours
- * running. Nothing here can see that one, and nothing at runtime can — which
- * is why it has a detector of a different kind, the manifest assertion in
- * {@code WidgetPictureTest}.
+ * and — only on the fallback, where the tap sends the alarm-list intent itself
+ * rather than the launcher's — the activity manager turns it away afterwards
+ * without any code of ours running. Nothing here can see that one, and nothing
+ * at runtime can — which is why it has a detector of a different kind, the
+ * manifest assertion in {@code WidgetPictureTest}.
  *
  * <p><strong>Why the working tap does not come through here.</strong> The
  * obvious shape is one receiver for every tap, deciding on arrival whether to
  * open the clock app or to complain. It was rejected: this receiver would then
  * have to start an activity from the background, which API 29 restricted and
  * API 34 restricted again, so a tap that works today would rest on a rule that
- * keeps being narrowed. {@link WidgetPicture} attaches the direct intent when
- * the alarm list resolves and this receiver only when it does not, so a working
- * phone keeps the tap it always had — no hop, no latency, and nothing of ours
- * standing between the finger and the clock app.
+ * keeps being narrowed. {@link WidgetPicture} attaches the direct intent — the
+ * clock app's launcher intent, or the alarm-list one where no launcher exists —
+ * when the alarm list resolves, and this receiver only when it does not, so a
+ * working phone keeps the tap it always had — no hop, no latency, and nothing
+ * of ours standing between the finger and the clock app.
  *
  * <p><strong>Nothing appears on screen.</strong> A {@code Toast} would serve
  * the person holding the phone better and is not this: the fault is a build
