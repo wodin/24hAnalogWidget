@@ -40,10 +40,11 @@ Building
 
     ./gradlew assembleDebug
 
-Requires an Android SDK with platform 36, and a JDK 17 installed somewhere
-Gradle can find it. The build pins the Java toolchain to 17, so the JDK on your
-`PATH` need not be 17 — but no toolchain resolver is configured, so one must
-already be present locally.
+Requires an Android SDK with platform 36, and a JDK 21 installed somewhere
+Gradle can find it. Both the Gradle daemon (`gradle/gradle-daemon-jvm.properties`)
+and the Java toolchain are pinned to 21, so the JDK on your `PATH` need not be —
+but no toolchain resolver is configured, so one must already be present locally.
+Lint is what needs 21; the code still targets Java 17.
 
 Installing
 ----------

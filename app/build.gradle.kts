@@ -66,8 +66,11 @@ android {
 }
 
 java {
+    // 21 because lint's bundled checks need it (lint-checks 32.3 calls
+    // List.removeLast); the daemon is pinned to the same by
+    // gradle/gradle-daemon-jvm.properties. The bytecode target stays 17.
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
