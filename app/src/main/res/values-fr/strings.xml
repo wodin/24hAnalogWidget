@@ -5,4 +5,7 @@
     <string name="intro_text">Ceci est un apperçu de ce widget d\'écran d\'accueil qui montre une horloge analogique sur 24 heures. Midi est en haut, pour que l\'aiguille des heures suive la course du soleil.</string>
     <string name="tick_keeps_exact_time">L\'aiguille des minutes est à l\'heure exacte.</string>
     <string name="tick_cannot_keep_exact_time">L\'aiguille des minutes peut retarder d\'une minute ou plus : SCHEDULE_EXACT_ALARM n\'est pas accordée. La commande qui l\'accorde est dans logcat, sous %1$s.</string>
+    <string name="tap_opens_clock_app">Toucher le widget ouvre %1$s.</string>
+    <string name="tap_opens_alarm_list_only">Toucher le widget ouvre la simple liste des alarmes : aucune application d\'horloge ici n\'a d\'activité de lancement.</string>
+    <string name="tap_opens_nothing">Toucher le widget n\'ouvre rien : aucune application d\'horloge n\'est visible pour cette application. Chaque toucher le signale dans logcat, sous %1$s.</string>
 </resources>
