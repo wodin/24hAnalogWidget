@@ -25,9 +25,9 @@ import java.util.function.IntPredicate;
 
 import info.staticfree.android.twentyfourhour.dial.Dial;
 import info.staticfree.android.twentyfourhour.observer.Observer;
+import info.staticfree.android.twentyfourhour.sun.Band;
 import info.staticfree.android.twentyfourhour.sun.BuenosAires;
 import info.staticfree.android.twentyfourhour.sun.SunPath;
-
 /**
  * Whether the shading lands where the observer's own sun puts it, or on a
  * nominal night that belongs to nobody.
@@ -192,18 +192,24 @@ public class SunPositionOverlayTest {
         SunPath path = BuenosAires.sunPath();
         Bitmap drawn = render(BuenosAires.observer());
 
-        int night = shadeDepthAt(drawn, midwayAngle(path.sunset(), path.eveningCivilTwilight()));
-        int civil = shadeDepthAt(drawn,
-                midwayAngle(path.eveningCivilTwilight(), path.eveningNauticalTwilight()));
-        int nautical = shadeDepthAt(drawn,
-                midwayAngle(path.eveningNauticalTwilight(), path.eveningAstronomicalTwilight()));
-        int astronomical = shadeDepthAt(drawn,
-                midwayAngle(path.eveningAstronomicalTwilight(), path.morningAstronomicalTwilight()));
+        Band night = path.night();
+        Band civil = path.civilTwilight();
+        Band nautical = path.nauticalTwilight();
+        Band astronomical = path.astronomicalTwilight();
 
-        assertTrue("the hour after sunset is shaded at all", night > 0);
-        assertTrue("civil twilight is darker than the sunset wedge alone", civil > night);
-        assertTrue("nautical twilight is darker than civil", nautical > civil);
-        assertTrue("astronomical twilight is darker than nautical", astronomical > nautical);
+        int nightDepth = shadeDepthAt(drawn, midwayAngle(night.evening(), civil.evening()));
+        int civilDepth = shadeDepthAt(drawn, midwayAngle(civil.evening(), nautical.evening()));
+        int nauticalDepth =
+                shadeDepthAt(drawn, midwayAngle(nautical.evening(), astronomical.evening()));
+        int astronomicalDepth =
+                shadeDepthAt(drawn, midwayAngle(astronomical.evening(), astronomical.morning()));
+
+        assertTrue("the hour after sunset is shaded at all", nightDepth > 0);
+        assertTrue("civil twilight is darker than the sunset wedge alone",
+                civilDepth > nightDepth);
+        assertTrue("nautical twilight is darker than civil", nauticalDepth > civilDepth);
+        assertTrue("astronomical twilight is darker than nautical",
+                astronomicalDepth > nauticalDepth);
     }
 
     /**

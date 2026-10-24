@@ -232,13 +232,15 @@ public class SunPathAlmanacTest {
 
     @Test
     public void sunriseAndSunsetMatchMetNorway() {
-        assertPublished("Berlin sunrise", BERLIN_MET_NORWAY_SUNRISE, berlin.sunrise(), TOLERANCE);
-        assertPublished("Berlin sunset", BERLIN_MET_NORWAY_SUNSET, berlin.sunset(), TOLERANCE);
+        assertPublished("Berlin sunrise", BERLIN_MET_NORWAY_SUNRISE, berlin.night().morning(),
+                TOLERANCE);
+        assertPublished("Berlin sunset", BERLIN_MET_NORWAY_SUNSET, berlin.night().evening(),
+                TOLERANCE);
 
         assertPublished("Buenos Aires sunrise", BUENOS_AIRES_MET_NORWAY_SUNRISE,
-                buenosAires.sunrise(), TOLERANCE);
+                buenosAires.night().morning(), TOLERANCE);
         assertPublished("Buenos Aires sunset", BUENOS_AIRES_MET_NORWAY_SUNSET,
-                buenosAires.sunset(), TOLERANCE);
+                buenosAires.night().evening(), TOLERANCE);
     }
 
     @Test
@@ -290,17 +292,17 @@ public class SunPathAlmanacTest {
             OffsetDateTime morningCivil, OffsetDateTime eveningCivil,
             OffsetDateTime eveningNautical, OffsetDateTime eveningAstronomical) {
         assertPublished(place + " morning astronomical twilight", morningAstronomical,
-                path.morningAstronomicalTwilight(), TOLERANCE);
+                path.astronomicalTwilight().morning(), TOLERANCE);
         assertPublished(place + " morning nautical twilight", morningNautical,
-                path.morningNauticalTwilight(), TOLERANCE);
+                path.nauticalTwilight().morning(), TOLERANCE);
         assertPublished(place + " morning civil twilight", morningCivil,
-                path.morningCivilTwilight(), TOLERANCE);
+                path.civilTwilight().morning(), TOLERANCE);
         assertPublished(place + " evening civil twilight", eveningCivil,
-                path.eveningCivilTwilight(), TOLERANCE);
+                path.civilTwilight().evening(), TOLERANCE);
         assertPublished(place + " evening nautical twilight", eveningNautical,
-                path.eveningNauticalTwilight(), TOLERANCE);
+                path.nauticalTwilight().evening(), TOLERANCE);
         assertPublished(place + " evening astronomical twilight", eveningAstronomical,
-                path.eveningAstronomicalTwilight(), TOLERANCE);
+                path.astronomicalTwilight().evening(), TOLERANCE);
     }
 
     private static void assertPublished(String moment, OffsetDateTime published,

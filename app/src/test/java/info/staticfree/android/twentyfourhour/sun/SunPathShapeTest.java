@@ -1,6 +1,8 @@
 package info.staticfree.android.twentyfourhour.sun;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -11,6 +13,8 @@ import org.junit.Test;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+
+import info.staticfree.android.twentyfourhour.observer.Observer;
 
 /**
  * The shape of a sun's day: what is true of any such day anywhere, whatever the
@@ -29,9 +33,10 @@ import java.time.ZonedDateTime;
  * shape. {@link Kashgar} is here only because its day overruns local midnight,
  * which is the one thing the other two cannot show.
  *
- * <p>And {@link London}, which is not a fourth day of the same kind but the
- * absence of one: the place whose sun keeps every appointment but the last, so
- * that there is no whole day here to have a shape at all.
+ * <p>And {@link London} and {@link Tromso}, which are not further days of the
+ * same kind but days with a band missing: London's sun keeps every appointment
+ * but the last, and Tromsø's keeps none in June and only the twilights' in
+ * December. A path still has a shape there; it is the bands that change theirs.
  */
 public class SunPathShapeTest {
 
@@ -98,31 +103,73 @@ public class SunPathShapeTest {
         }
 
         assertEquals("sunrise belongs to the day asked about", Kashgar.DATE,
-                path.sunrise().toLocalDate());
+                path.night().morning().toLocalDate());
         assertEquals("sunset belongs to the day asked about", Kashgar.DATE,
-                path.sunset().toLocalDate());
+                path.night().evening().toLocalDate());
         assertEquals("the evening's astronomical twilight ends after local midnight",
-                Kashgar.DATE.plusDays(1), path.eveningAstronomicalTwilight().toLocalDate());
+                Kashgar.DATE.plusDays(1), path.astronomicalTwilight().evening().toLocalDate());
     }
 
     /**
-     * All nine moments or none. A place can have a sunrise and a sunset and
-     * still be missing a twilight: from about 48&deg; north the sun stops
-     * falling a full 18&deg; below the horizon around the June solstice, so
-     * London has no astronomical twilight from roughly mid-May to late July
-     * while its days are otherwise ordinary.
+     * A place can have a sunrise and a sunset and still be missing a twilight:
+     * from about 48&deg; north the sun stops falling a full 18&deg; below the
+     * horizon around the June solstice, so London has no astronomical twilight
+     * from roughly mid-May to late July while its days are otherwise ordinary.
      *
-     * <p>The path is null there rather than partial, because this seam has no
-     * way to say "these eight" and the painter has nothing to do with the
-     * answer but draw the Placeholder. That is a real behaviour and a
-     * surprising one — London is not the Arctic — so it is asserted rather
-     * than left to be discovered by whoever first lights this feature up.
+     * <p>The path is there and says so, band by band: three arcs and one
+     * that never happens. It used to be null here instead, all nine moments or
+     * none, and the painter fell back to the Placeholder for a city that is not
+     * the Arctic. That was the surprise this test was written to record; this
+     * is its correction.
      */
     @Test
-    public void aPlaceMissingOneTwilightHasNoPathAtAll() {
-        assertNull("London in late June has a sunrise and a sunset but never a night dark " +
-                        "enough for astronomical twilight, so there is no whole day to draw",
-                SunPath.on(London.observer(), London.SOMETIME_THAT_DAY, London.ZONE));
+    public void aPlaceMissingOneTwilightStillHasAPath() {
+        SunPath path = SunPath.on(London.observer(), London.SOMETIME_THAT_DAY, London.ZONE);
+
+        assertNotNull("London in late June has a sunrise and a sunset", path);
+        assertIsArc("night", path.night());
+        assertIsArc("civil twilight", path.civilTwilight());
+        assertIsArc("nautical twilight", path.nauticalTwilight());
+        assertTrue("but never a night dark enough for astronomical twilight",
+                path.astronomicalTwilight().isNever());
+    }
+
+    /**
+     * Beyond the polar circle the same thing happens to every horizon at once
+     * in June, and to the visible one in December — when the three twilights
+     * still come and go around a high noon the sun never quite reaches. The
+     * two shapes a band can take besides an arc, each where it actually occurs.
+     */
+    @Test
+    public void polarDayAndPolarNightAreBandsOfTheirOwnShape() {
+        SunPath midsummer =
+                SunPath.on(Tromso.observer(), Tromso.SOMETIME_MIDSUMMER, Tromso.ZONE);
+        assertNotNull(midsummer);
+
+        for (Band band : allFour(midsummer)) {
+            assertTrue("Tromsø at midsummer: " + band, band.isNever());
+        }
+
+        SunPath midwinter =
+                SunPath.on(Tromso.observer(), Tromso.SOMETIME_MIDWINTER, Tromso.ZONE);
+        assertNotNull(midwinter);
+
+        assertTrue("Tromsø at midwinter: the sun never rises", midwinter.night().isAllDay());
+        assertIsArc("civil twilight", midwinter.civilTwilight());
+        assertIsArc("nautical twilight", midwinter.nauticalTwilight());
+        assertIsArc("astronomical twilight", midwinter.astronomicalTwilight());
+        assertRunsInOrder(midwinter.civilTwilight(), midwinter.nauticalTwilight(),
+                midwinter.astronomicalTwilight());
+    }
+
+    /**
+     * Only the poles have no path at all: in their dark half of the year the
+     * sun never crosses the meridian, so there is no high noon to build a day
+     * around.
+     */
+    @Test
+    public void thePoleInItsDarkHalfHasNoPath() {
+        assertNull(SunPath.on(new Observer(90, 0), Tromso.SOMETIME_MIDWINTER, ZoneId.of("UTC")));
     }
 
     private static void assertEveryMomentBelongsTo(@NonNull ZoneId zone, @NonNull LocalDate date,
@@ -133,29 +180,49 @@ public class SunPathShapeTest {
         }
     }
 
+    /**
+     * Sunrise before high noon before sunset, and the twilights nesting outward
+     * from it: each band's morning before the shallower one's, each evening
+     * after. Which is to say the bands nest, each inside the last.
+     */
     private static void assertRunsInOrder(@NonNull SunPath path) {
-        assertInOrder("morning astronomical twilight", path.morningAstronomicalTwilight(),
-                "morning nautical twilight", path.morningNauticalTwilight());
-        assertInOrder("morning nautical twilight", path.morningNauticalTwilight(),
-                "morning civil twilight", path.morningCivilTwilight());
-        assertInOrder("morning civil twilight", path.morningCivilTwilight(), "sunrise",
-                path.sunrise());
-        assertInOrder("sunrise", path.sunrise(), "high noon", path.highNoon());
-        assertInOrder("high noon", path.highNoon(), "sunset", path.sunset());
-        assertInOrder("sunset", path.sunset(), "evening civil twilight",
-                path.eveningCivilTwilight());
-        assertInOrder("evening civil twilight", path.eveningCivilTwilight(),
-                "evening nautical twilight", path.eveningNauticalTwilight());
-        assertInOrder("evening nautical twilight", path.eveningNauticalTwilight(),
-                "evening astronomical twilight", path.eveningAstronomicalTwilight());
+        assertInOrder("sunrise", path.night().morning(), "high noon", path.highNoon());
+        assertInOrder("high noon", path.highNoon(), "sunset", path.night().evening());
+        assertRunsInOrder(path.night(), path.civilTwilight(), path.nauticalTwilight(),
+                path.astronomicalTwilight());
+    }
+
+    /** Each band an arc nested inside the one before it, shallowest first. */
+    private static void assertRunsInOrder(@NonNull Band... shallowestFirst) {
+        for (int i = 1; i < shallowestFirst.length; i++) {
+            Band shallower = shallowestFirst[i - 1];
+            Band deeper = shallowestFirst[i];
+
+            assertInOrder("the deeper band's morning", deeper.morning(),
+                    "the shallower band's morning", shallower.morning());
+            assertInOrder("the shallower band's evening", shallower.evening(),
+                    "the deeper band's evening", deeper.evening());
+        }
+    }
+
+    private static void assertIsArc(@NonNull String name, @NonNull Band band) {
+        assertFalse(name + " never happens", band.isNever());
+        assertFalse(name + " lasts all day", band.isAllDay());
+    }
+
+    @NonNull
+    private static Band[] allFour(@NonNull SunPath path) {
+        return new Band[] {path.night(), path.civilTwilight(), path.nauticalTwilight(),
+                path.astronomicalTwilight()};
     }
 
     @NonNull
     private static ZonedDateTime[] allNine(@NonNull SunPath path) {
-        return new ZonedDateTime[] {path.morningAstronomicalTwilight(),
-                path.morningNauticalTwilight(), path.morningCivilTwilight(), path.sunrise(),
-                path.highNoon(), path.sunset(), path.eveningCivilTwilight(),
-                path.eveningNauticalTwilight(), path.eveningAstronomicalTwilight()};
+        return new ZonedDateTime[] {path.astronomicalTwilight().morning(),
+                path.nauticalTwilight().morning(), path.civilTwilight().morning(),
+                path.night().morning(), path.highNoon(), path.night().evening(),
+                path.civilTwilight().evening(), path.nauticalTwilight().evening(),
+                path.astronomicalTwilight().evening()};
     }
 
     private static void assertInOrder(String earlierName, ZonedDateTime earlier, String laterName,

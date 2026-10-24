@@ -40,6 +40,7 @@ import info.staticfree.android.twentyfourhour.Diagnosis;
 import info.staticfree.android.twentyfourhour.R;
 import info.staticfree.android.twentyfourhour.dial.Dial;
 import info.staticfree.android.twentyfourhour.observer.Observer;
+import info.staticfree.android.twentyfourhour.sun.Band;
 import info.staticfree.android.twentyfourhour.sun.SunPath;
 
 /**
@@ -128,7 +129,7 @@ public class SunPositionOverlay implements DialOverlay {
 
         SunPath path = SunPath.on(observer, instant, zone);
 
-        if (path == null) {
+        if (path == null || !everyBandIsAnArc(path)) {
             Log.w(Diagnosis.TAG,
                     "no sun path at " + observer + "; drawing the placeholder instead");
             drawPlaceholder(canvas);
@@ -136,14 +137,14 @@ public class SunPositionOverlay implements DialOverlay {
             return;
         }
 
-        drawInsetArc(canvas, arcAngleFor(path.sunset()), arcAngleFor(path.sunrise()),
-                OVERLAY_SUNSET);
-        drawInsetArc(canvas, arcAngleFor(path.eveningCivilTwilight()),
-                arcAngleFor(path.morningCivilTwilight()), OVERLAY_SUNSET);
-        drawInsetArc(canvas, arcAngleFor(path.eveningNauticalTwilight()),
-                arcAngleFor(path.morningNauticalTwilight()), OVERLAY_SUNSET);
-        drawInsetArc(canvas, arcAngleFor(path.eveningAstronomicalTwilight()),
-                arcAngleFor(path.morningAstronomicalTwilight()), OVERLAY_SUNSET);
+        drawInsetArc(canvas, arcAngleFor(path.night().evening()),
+                arcAngleFor(path.night().morning()), OVERLAY_SUNSET);
+        drawInsetArc(canvas, arcAngleFor(path.civilTwilight().evening()),
+                arcAngleFor(path.civilTwilight().morning()), OVERLAY_SUNSET);
+        drawInsetArc(canvas, arcAngleFor(path.nauticalTwilight().evening()),
+                arcAngleFor(path.nauticalTwilight().morning()), OVERLAY_SUNSET);
+        drawInsetArc(canvas, arcAngleFor(path.astronomicalTwilight().evening()),
+                arcAngleFor(path.astronomicalTwilight().morning()), OVERLAY_SUNSET);
 
         // Marked without asking whether there was a day to mark the middle of.
         // A SunPath searches back from High noon for its sunrise and forward for
@@ -152,6 +153,19 @@ public class SunPositionOverlay implements DialOverlay {
 
         canvas.drawArc(inset, highNoonAngle - HIGH_NOON_ARC_ANGLE / 2, HIGH_NOON_ARC_ANGLE, true,
                 OVERLAY_SUN);
+    }
+
+    // Until the painter can draw a band that is never or all day, a path with
+    // one is treated as the all-or-nothing path used to be: no path at all.
+    private static boolean everyBandIsAnArc(@NonNull SunPath path) {
+        for (Band band : new Band[] {path.night(), path.civilTwilight(),
+                path.nauticalTwilight(), path.astronomicalTwilight()}) {
+            if (band.isNever() || band.isAllDay()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void drawInsetArc(@NonNull Canvas canvas, float startAngle, float endAngle,

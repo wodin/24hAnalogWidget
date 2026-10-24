@@ -18,16 +18,15 @@ import info.staticfree.android.twentyfourhour.observer.Observer;
  * here for the day that does not: from about 48&deg; north the sun stops falling
  * a full 18&deg; below the horizon around the June solstice, so London has no
  * astronomical twilight from roughly mid-May to late July while its sunrise and
- * its sunset carry on as usual. {@link SunPath} is all nine moments or none, so
- * there is no path here at all — and the surprise is the point: London is not
- * the Arctic, and this is the ordinary city the failure turns up in.
+ * its sunset carry on as usual. The path carries that as a band that never
+ * happens — and the surprise is the point: London is not the Arctic, and this
+ * is the ordinary city a missing horizon turns up in.
  *
  * <p>Two readers, which is why it is a fixture rather than four lines inside
- * one: {@link SunPathShapeTest} asks that the path is null, and the overlay's
- * diagnosis test asks that a painter handed this place says so rather than
- * going quiet. Same argument as {@link BuenosAires} and as {@code Fixes} — the
- * fact that could go stale lives once, and a second copy of where London is
- * would be a second answer.
+ * one: {@link SunPathShapeTest} asks what shape the bands take, and the
+ * overlay's test asks what a painter handed this place draws. Same argument as
+ * {@link BuenosAires} and as {@code Fixes} — the fact that could go stale lives
+ * once, and a second copy of where London is would be a second answer.
  *
  * <p>A public city centre, never the device's own fix: this repo is public.
  */

@@ -34,8 +34,9 @@ import java.time.ZonedDateTime;
 import info.staticfree.android.twentyfourhour.observer.Observer;
 
 /**
- * The sun's whole day at one place: sunrise, sunset, the three twilights either
- * side, and high noon. A Sun position is one point on it.
+ * The sun's whole day at one place: high noon, and the four bands of the night
+ * around it — below the horizon, and below each of the three twilight horizons
+ * beneath that. A Sun position is one point on it.
  *
  * <p>Moments, not angles. What an almanac publishes is times, so times are what
  * an outside source can contradict; mapping one to a place on the dial is the
@@ -43,37 +44,30 @@ import info.staticfree.android.twentyfourhour.observer.Observer;
  * touches Android, so a day can be asserted on a plain JVM to the second rather
  * than to the pixel.
  *
- * <p>Immutable and computed once: the nine moments are settled by the time you
- * hold one.
+ * <p>Bands, not nine moments, because not every place has every crossing every
+ * day and the painter has something to draw regardless: London keeps its
+ * sunrise and sunset through a June in which the sky never gets fully dark, and
+ * a {@link Band} can say so where a nullable moment could only say nothing.
+ *
+ * <p>Immutable and computed once: everything is settled by the time you hold
+ * one.
  */
 public final class SunPath {
-
-    @NonNull
-    private final ZonedDateTime morningAstronomicalTwilight;
-
-    @NonNull
-    private final ZonedDateTime morningNauticalTwilight;
-
-    @NonNull
-    private final ZonedDateTime morningCivilTwilight;
-
-    @NonNull
-    private final ZonedDateTime sunrise;
 
     @NonNull
     private final ZonedDateTime highNoon;
 
     @NonNull
-    private final ZonedDateTime sunset;
+    private final Band night;
 
     @NonNull
-    private final ZonedDateTime eveningCivilTwilight;
+    private final Band civilTwilight;
 
     @NonNull
-    private final ZonedDateTime eveningNauticalTwilight;
+    private final Band nauticalTwilight;
 
     @NonNull
-    private final ZonedDateTime eveningAstronomicalTwilight;
+    private final Band astronomicalTwilight;
 
     /**
      * The sun's day where {@code observer} stands, for whichever day contains
@@ -88,15 +82,11 @@ public final class SunPath {
      * moments dated to the day after the one asked about. Kashgar on the
      * solstice is such a place; {@code SunPathShapeTest} holds an example.
      *
-     * @return {@code null} if this place has no such day, meaning the sun does
-     *         not cross one of the four horizons a path is defined by — or, at
-     *         the poles in their dark half of the year, does not cross the
-     *         meridian either. A missing horizon needs nothing as exotic as a
-     *         polar circle: from about 48&deg; north or south the sun stops
-     *         falling a full 18&deg; below it around the summer solstice, so
-     *         London has no astronomical twilight in late June and no path here
-     *         either. All of it is one answer, because a caller has nothing to
-     *         draw either way.
+     * @return {@code null} only where the sun does not cross the meridian at
+     *         all, which is the poles in their dark half of the year: there is
+     *         no high noon to build a day around. A horizon the sun fails to
+     *         cross is not that — it is a band of a different shape, and the
+     *         path carries it.
      */
     @Nullable
     public static SunPath on(@NonNull Observer observer, @NonNull Instant instant,
@@ -107,56 +97,19 @@ public final class SunPath {
             return null;
         }
 
-        ZonedDateTime morningAstronomicalTwilight = almanac.morning(SunTimes.Twilight.ASTRONOMICAL);
-        ZonedDateTime morningNauticalTwilight = almanac.morning(SunTimes.Twilight.NAUTICAL);
-        ZonedDateTime morningCivilTwilight = almanac.morning(SunTimes.Twilight.CIVIL);
-        ZonedDateTime sunrise = almanac.morning(SunTimes.Twilight.VISUAL);
-        ZonedDateTime sunset = almanac.evening(SunTimes.Twilight.VISUAL);
-        ZonedDateTime eveningCivilTwilight = almanac.evening(SunTimes.Twilight.CIVIL);
-        ZonedDateTime eveningNauticalTwilight = almanac.evening(SunTimes.Twilight.NAUTICAL);
-        ZonedDateTime eveningAstronomicalTwilight = almanac.evening(SunTimes.Twilight.ASTRONOMICAL);
-
-        // All nine or none. A latitude with a sunrise and a sunset but no
-        // astronomical twilight is a real place, and it draws the Placeholder
-        // rather than most of a day: this seam has no way to say "these eight",
-        // and inventing one would be answering a question nothing has asked.
-        if (anyMissing(morningAstronomicalTwilight, morningNauticalTwilight, morningCivilTwilight,
-                sunrise, sunset, eveningCivilTwilight, eveningNauticalTwilight,
-                eveningAstronomicalTwilight)) {
-            return null;
-        }
-
-        return new SunPath(morningAstronomicalTwilight, morningNauticalTwilight,
-                morningCivilTwilight, sunrise, almanac.highNoon(), sunset, eveningCivilTwilight,
-                eveningNauticalTwilight, eveningAstronomicalTwilight);
+        return new SunPath(almanac.highNoon(), almanac.band(SunTimes.Twilight.VISUAL),
+                almanac.band(SunTimes.Twilight.CIVIL), almanac.band(SunTimes.Twilight.NAUTICAL),
+                almanac.band(SunTimes.Twilight.ASTRONOMICAL));
     }
 
-    private SunPath(@NonNull ZonedDateTime morningAstronomicalTwilight,
-            @NonNull ZonedDateTime morningNauticalTwilight,
-            @NonNull ZonedDateTime morningCivilTwilight, @NonNull ZonedDateTime sunrise,
-            @NonNull ZonedDateTime highNoon, @NonNull ZonedDateTime sunset,
-            @NonNull ZonedDateTime eveningCivilTwilight,
-            @NonNull ZonedDateTime eveningNauticalTwilight,
-            @NonNull ZonedDateTime eveningAstronomicalTwilight) {
-        this.morningAstronomicalTwilight = morningAstronomicalTwilight;
-        this.morningNauticalTwilight = morningNauticalTwilight;
-        this.morningCivilTwilight = morningCivilTwilight;
-        this.sunrise = sunrise;
+    private SunPath(@NonNull ZonedDateTime highNoon, @NonNull Band night,
+            @NonNull Band civilTwilight, @NonNull Band nauticalTwilight,
+            @NonNull Band astronomicalTwilight) {
         this.highNoon = highNoon;
-        this.sunset = sunset;
-        this.eveningCivilTwilight = eveningCivilTwilight;
-        this.eveningNauticalTwilight = eveningNauticalTwilight;
-        this.eveningAstronomicalTwilight = eveningAstronomicalTwilight;
-    }
-
-    private static boolean anyMissing(@Nullable ZonedDateTime... moments) {
-        for (ZonedDateTime moment : moments) {
-            if (moment == null) {
-                return true;
-            }
-        }
-
-        return false;
+        this.night = night;
+        this.civilTwilight = civilTwilight;
+        this.nauticalTwilight = nauticalTwilight;
+        this.astronomicalTwilight = astronomicalTwilight;
     }
 
     /**
@@ -227,18 +180,6 @@ public final class SunPath {
         @NonNull
         ZonedDateTime highNoon() {
             return highNoon;
-        }
-
-        /** The last time the sun rose through {@code twilight} before high noon. */
-        @Nullable
-        ZonedDateTime morning(@NonNull SunTimes.Twilight twilight) {
-            return search(twilight).reverse().execute().getRise();
-        }
-
-        /** The first time the sun set through {@code twilight} after high noon. */
-        @Nullable
-        ZonedDateTime evening(@NonNull SunTimes.Twilight twilight) {
-            return search(twilight).forward().execute().getSet();
         }
 
         /**
@@ -316,47 +257,31 @@ public final class SunPath {
     }
 
     @NonNull
-    public ZonedDateTime morningAstronomicalTwilight() {
-        return morningAstronomicalTwilight;
-    }
-
-    @NonNull
-    public ZonedDateTime morningNauticalTwilight() {
-        return morningNauticalTwilight;
-    }
-
-    @NonNull
-    public ZonedDateTime morningCivilTwilight() {
-        return morningCivilTwilight;
-    }
-
-    @NonNull
-    public ZonedDateTime sunrise() {
-        return sunrise;
-    }
-
-    @NonNull
     public ZonedDateTime highNoon() {
         return highNoon;
     }
 
+    /** Below the horizon: from sunset to sunrise. */
     @NonNull
-    public ZonedDateTime sunset() {
-        return sunset;
+    public Band night() {
+        return night;
     }
 
+    /** Below 6&deg;: from the end of evening civil twilight to the start of the morning's. */
     @NonNull
-    public ZonedDateTime eveningCivilTwilight() {
-        return eveningCivilTwilight;
+    public Band civilTwilight() {
+        return civilTwilight;
     }
 
+    /** Below 12&deg;. */
     @NonNull
-    public ZonedDateTime eveningNauticalTwilight() {
-        return eveningNauticalTwilight;
+    public Band nauticalTwilight() {
+        return nauticalTwilight;
     }
 
+    /** Below 18&deg;: full night. */
     @NonNull
-    public ZonedDateTime eveningAstronomicalTwilight() {
-        return eveningAstronomicalTwilight;
+    public Band astronomicalTwilight() {
+        return astronomicalTwilight;
     }
 }
