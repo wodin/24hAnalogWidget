@@ -1,5 +1,6 @@
 ---
 status: accepted
+amended-by: 0006
 ---
 
 # The sun library
@@ -38,8 +39,8 @@ check after the swap confirmed exactly that — the same hatched Placeholder ove
 18:00 through midnight to 06:00, and a minute hand still sweeping.
 
 It is also why the swap happened here rather than in candidate D — the candidate
-that gives the phone widget the Sun position it has never had, named in
-`docs/plans/architecture-review-2026-08-19.md` and not yet planned in detail. D
+that gives the phone widget the Sun position it has never had, which became
+ADR-0005 and was not yet planned in detail when this was written. D
 closes the window: the moment `setLocation` has a caller, replacing the library
 becomes a change to something people are looking at, and would have to be
 measured as one. Doing it in D would also have meant porting a 2004 `Calendar`
@@ -181,12 +182,14 @@ to catch and the catch was deleted rather than translated. What the new library
 caller's bug rather than a place without a sunrise, and swallowing it would hide
 one.
 
-The all-or-nothing rule survives the change: a path is nine moments or it is
-null, and a caller with eight has nothing to draw. That fires somewhere far more
+The all-or-nothing rule survived the change: a path was nine moments or it was
+null, and a caller with eight had nothing to draw. That fires somewhere far more
 ordinary than "polar circle" suggests — from about 48° the sun stops falling a
 full 18° below the horizon near midsummer, so **London has no astronomical
-twilight from about mid-May to late July** and no sun path either. It draws the
-Placeholder, which is the honest answer.
+twilight from about mid-May to late July** and, under this rule, no sun path
+either. It drew the Placeholder, which was the honest answer for a seam with no
+way to say "these eight". ADR-0006 gives it one: a path is now four bands, each
+able to be absent on its own, and London keeps its other three.
 
 ## Consequences
 

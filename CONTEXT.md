@@ -39,11 +39,23 @@ a direction in the sky — azimuth and altitude — and which nothing here impor
 _Avoid_: sun angle, solar position, SunPosition
 
 **Sun path**:
-The sun's whole day at one place: sunrise, sunset, the three twilights either
-side, and high noon. A Sun position is one point on it. A path needs an
-Observer, and not every place has one every day — London loses its astronomical
-twilight around midsummer. With no path, the dial draws the Placeholder instead.
+The sun's whole day at one place: high noon, and the four Bands of the night
+around it. A Sun position is one point on it. A path needs an Observer, and
+only the poles in their dark half of the year have none — there the sun never
+crosses the meridian, so there is no high noon to build a day around. With no
+path, the dial draws the Placeholder instead.
 _Avoid_: sun times, solar events, ephemeris
+
+**Band**:
+The stretch of one day the sun spends below one horizon, from the evening it
+sinks through it to the morning it climbs back. One for the horizon itself —
+the night — and one for each Twilight. A band is an arc with those two moments,
+or it never happens (London's astronomical twilight around midsummer), or it
+lasts all day (the night beyond the polar circle in December). The dial shades
+the bands a place has and leaves out the ones it lacks. A band with one
+crossing and not the other runs to midnight, the edge of the day, as an
+almanac's table shades it.
+_Avoid_: interval, period, night (for the twilight ones)
 
 **Twilight**:
 The graded band between full day and full night, in three widening steps: civil,
@@ -68,8 +80,10 @@ _Avoid_: location, coordinates, GPS
 **Placeholder**:
 The hatched shading over a nominal night, 18:00 through midnight to 06:00, drawn
 whenever there is no Sun path to draw — either because no Observer is known, or
-because the Observer's place has none that day. It means "the sun position is
-unknown", not "the sun is down for these hours".
+because the Observer stands at a pole in its dark half of the year. It means
+"the sun position is unknown", not "the sun is down for these hours". A place
+missing a Band is not this: it has a path, and the dial draws what the path
+has.
 _Avoid_: empty state, fallback, no-data tile
 
 ## The app

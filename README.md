@@ -10,9 +10,9 @@ The dial also shows when the sun rises and sets where you are standing. It works
 out where that is from the last fix the phone happens to have cached, so the two
 permissions below have to be granted before it can draw a real sun path. Without
 them it draws the hatched Placeholder instead, which means "the sun position is
-unknown" rather than "the sun is down". It draws that too on the days a place
-has no whole sun path to show — London, for one, loses its astronomical twilight
-around midsummer.
+unknown" rather than "the sun is down". Where a place lacks one of the twilight
+bands — London loses its astronomical twilight around midsummer — the dial
+shades the bands it has and leaves that one out.
 
 See [CONTEXT.md](CONTEXT.md) for the vocabulary the code uses.
 
