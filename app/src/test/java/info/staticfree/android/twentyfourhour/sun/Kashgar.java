@@ -39,12 +39,18 @@ final class Kashgar {
 
     static final LocalDate DATE = LocalDate.of(2026, Month.JUNE, 21);
 
-    private static final Instant SOMETIME_THAT_DAY =
+    static final Instant SOMETIME_THAT_DAY =
             LocalDateTime.of(DATE, LocalTime.NOON).atZone(ZONE).toInstant();
+
+    /** Where this fixture stands, for anything that wants the place and not the day. */
+    @NonNull
+    static Observer observer() {
+        return new Observer(LATITUDE, LONGITUDE);
+    }
 
     @NonNull
     static SunPath sunPath() {
-        SunPath path = SunPath.on(new Observer(LATITUDE, LONGITUDE), SOMETIME_THAT_DAY, ZONE);
+        SunPath path = SunPath.on(observer(), SOMETIME_THAT_DAY, ZONE);
 
         assertNotNull("Kashgar on the solstice has a sunrise, a sunset and all three twilights",
                 path);

@@ -27,6 +27,7 @@ import androidx.annotation.Nullable;
 import org.shredzone.commons.suncalc.SunTimes;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
@@ -171,13 +172,20 @@ public final class SunPath {
      * this app calls sunrise and sunset, refraction and the sun's disc
      * included. Neither name gets out of this file.
      */
-    private static final class Almanac {
+    static final class Almanac {
 
         @NonNull
         private final Observer observer;
 
         @NonNull
         private final ZonedDateTime highNoon;
+
+        /** The day asked about, as the stretch of time it is: midnight to midnight in its zone. */
+        @NonNull
+        private final ZonedDateTime startOfDay;
+
+        @NonNull
+        private final ZonedDateTime endOfDay;
 
         /**
          * The almanac for this observer on the day containing {@code instant}
@@ -196,19 +204,24 @@ public final class SunPath {
         @Nullable
         static Almanac at(@NonNull Observer observer, @NonNull Instant instant,
                 @NonNull ZoneId zone) {
+            LocalDate date = instant.atZone(zone).toLocalDate();
             ZonedDateTime highNoon = observedFrom(observer)
-                    .on(instant.atZone(zone).toLocalDate())
+                    .on(date)
                     .timezone(zone)
                     .forward()
                     .execute()
                     .getNoon();
 
-            return highNoon == null ? null : new Almanac(observer, highNoon);
+            return highNoon == null ? null
+                    : new Almanac(observer, highNoon, date.atStartOfDay(zone));
         }
 
-        private Almanac(@NonNull Observer observer, @NonNull ZonedDateTime highNoon) {
+        private Almanac(@NonNull Observer observer, @NonNull ZonedDateTime highNoon,
+                @NonNull ZonedDateTime startOfDay) {
             this.observer = observer;
             this.highNoon = highNoon;
+            this.startOfDay = startOfDay;
+            this.endOfDay = startOfDay.plusDays(1);
         }
 
         @NonNull
@@ -226,6 +239,59 @@ public final class SunPath {
         @Nullable
         ZonedDateTime evening(@NonNull SunTimes.Twilight twilight) {
             return search(twilight).forward().execute().getSet();
+        }
+
+        /**
+         * The stretch of this day the sun spends below {@code twilight}'s
+         * horizon, whatever shape that turns out to be. The one place a missing
+         * crossing is resolved: the library answers each side of the day
+         * separately, with a null crossing and a flag saying which way the sun
+         * stayed, and the two sides can disagree — London on 22 May has a
+         * morning astronomical crossing and no evening one.
+         *
+         * <p>A missing side is what an almanac prints as a dash: the darkness
+         * did not begin, or did not end, within the date. So the band runs to
+         * the edge of the day, midnight, which is what the published tables
+         * shade to and is already a fixed point on the dial. Upstream's
+         * {@code noon ± 12h} is the same idea approximated.
+         *
+         * <p>With one side missing, the crossing on the other must itself fall
+         * within the day, or there is no darkness today to shade: at the margin
+         * of polar day the last rise can sit just before yesterday's midnight,
+         * and running a band from midnight to it would shade the whole dial.
+         * A day with both crossings is not clipped, because its moments are
+         * allowed to spill — see <em>the sun's day, not the calendar's</em> on
+         * {@link SunPath#on} — and the dial reads them by time alone.
+         */
+        @NonNull
+        Band band(@NonNull SunTimes.Twilight twilight) {
+            SunTimes morning = search(twilight).reverse().execute();
+            SunTimes evening = search(twilight).forward().execute();
+
+            if (morning.isAlwaysDown() || evening.isAlwaysDown()) {
+                return Band.allDay();
+            }
+
+            ZonedDateTime rise = morning.getRise();
+            ZonedDateTime set = evening.getSet();
+
+            if (rise == null && set == null) {
+                return Band.never();
+            }
+
+            if (rise == null) {
+                return withinToday(set) ? Band.between(set, endOfDay) : Band.never();
+            }
+
+            if (set == null) {
+                return withinToday(rise) ? Band.between(startOfDay, rise) : Band.never();
+            }
+
+            return Band.between(set, rise);
+        }
+
+        private boolean withinToday(@NonNull ZonedDateTime moment) {
+            return !moment.isBefore(startOfDay) && moment.isBefore(endOfDay);
         }
 
         /**

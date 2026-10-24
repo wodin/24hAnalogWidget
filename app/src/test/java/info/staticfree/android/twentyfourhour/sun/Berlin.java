@@ -47,8 +47,14 @@ final class Berlin {
      * lands on the date asked for and the failure shows up as a wrong time
      * rather than as a wrong day.
      */
-    private static final Instant SOMETIME_THAT_DAY =
+    static final Instant SOMETIME_THAT_DAY =
             LocalDateTime.of(DATE, LocalTime.NOON).atZone(ZONE).toInstant();
+
+    /** Where this fixture stands, for anything that wants the place and not the day. */
+    @NonNull
+    static Observer observer() {
+        return new Observer(LATITUDE, LONGITUDE);
+    }
 
     /**
      * The sun's day here. {@link SunPath#on} may return null for a place that
@@ -57,7 +63,7 @@ final class Berlin {
      */
     @NonNull
     static SunPath sunPath() {
-        SunPath path = SunPath.on(new Observer(LATITUDE, LONGITUDE), SOMETIME_THAT_DAY, ZONE);
+        SunPath path = SunPath.on(observer(), SOMETIME_THAT_DAY, ZONE);
 
         assertNotNull("Berlin in February has a sunrise, a sunset and all three twilights", path);
 
