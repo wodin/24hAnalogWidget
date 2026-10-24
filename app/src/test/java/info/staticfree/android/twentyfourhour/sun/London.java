@@ -45,9 +45,19 @@ public final class London {
     /** The June solstice, the middle of the stretch with no astronomical twilight. */
     static final LocalDate DATE = LocalDate.of(2026, Month.JUNE, 21);
 
+    /**
+     * The edge of that stretch. The gap does not open all at once: on this day
+     * the sun still rose through 18&deg; below in the small hours, but that
+     * evening it never falls so far again. One crossing and not the other.
+     */
+    static final LocalDate TRANSITION_DATE = LocalDate.of(2026, Month.MAY, 22);
+
     /** Local noon, for the reason {@link Berlin} gives. */
     public static final Instant SOMETIME_THAT_DAY =
             LocalDateTime.of(DATE, LocalTime.NOON).atZone(ZONE).toInstant();
+
+    public static final Instant SOMETIME_TRANSITION_DAY =
+            LocalDateTime.of(TRANSITION_DATE, LocalTime.NOON).atZone(ZONE).toInstant();
 
     /** Where this fixture stands, for anything that wants the place and not the day. */
     @NonNull
