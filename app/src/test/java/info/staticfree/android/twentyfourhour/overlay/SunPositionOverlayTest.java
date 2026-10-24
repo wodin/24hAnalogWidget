@@ -20,6 +20,8 @@ import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
 
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.function.IntPredicate;
 
@@ -27,7 +29,9 @@ import info.staticfree.android.twentyfourhour.dial.Dial;
 import info.staticfree.android.twentyfourhour.observer.Observer;
 import info.staticfree.android.twentyfourhour.sun.Band;
 import info.staticfree.android.twentyfourhour.sun.BuenosAires;
+import info.staticfree.android.twentyfourhour.sun.London;
 import info.staticfree.android.twentyfourhour.sun.SunPath;
+import info.staticfree.android.twentyfourhour.sun.Tromso;
 /**
  * Whether the shading lands where the observer's own sun puts it, or on a
  * nominal night that belongs to nobody.
@@ -237,6 +241,80 @@ public class SunPositionOverlayTest {
     }
 
     /**
+     * One coat of shade is {@code alpha 20}; each further coat of the same
+     * black composes over it, so three read 55 and four 71. The numbers the
+     * staircase above leans on, written down so a test can ask for a count of
+     * coats rather than merely "darker".
+     */
+    private static final int ONE_COAT = 20;
+
+    private static final int THREE_COATS = 55;
+
+    private static final int FOUR_COATS = 71;
+
+    /** 01:00 as an angle on the dial, the same way as {@link #EARLY_EVENING}. */
+    private static final double SMALL_HOURS = 195;
+
+    /** 03:00 the same way. */
+    private static final double DEAD_OF_NIGHT = 225;
+
+    /**
+     * London at midsummer has three bands and lacks the fourth, and the dial
+     * draws the three. It used to draw the Placeholder here instead, because a
+     * path was all nine moments or none; that is the behaviour this feature
+     * exists to replace, so it is asserted from both sides. 18:08 is broad
+     * daylight in a London June (sunset 21:21), where the Placeholder's night
+     * would have begun; 01:00 is inside the night, civil and nautical bands and
+     * no deeper — three coats, not four.
+     */
+    @Test
+    public void aMissingBandIsLeftOutRatherThanTheWholePath() {
+        Bitmap drawn = render(London.observer(), London.SOMETIME_THAT_DAY, London.ZONE);
+
+        assertEquals("18:08 is daylight in London in June, not the Placeholder's night", 0,
+                paintedAlong(drawn, EARLY_EVENING));
+        assertEquals("01:00 is under the night, civil and nautical bands and no astronomical one",
+                THREE_COATS, shadeDepthAt(drawn, SMALL_HOURS));
+    }
+
+    /**
+     * Beyond the polar circle in December the sun never rises, so the night
+     * band is the whole dial: one coat everywhere, even at the dial's noon. The
+     * twilights still come and go around midday, so the dead of night carries
+     * all four. And the high noon mark still stands, on a sun that never clears
+     * the horizon, because it marks the meridian crossing rather than any day.
+     */
+    @Test
+    public void polarNightShadesTheWholeDialAndStillMarksHighNoon() {
+        SunPath path = SunPath.on(Tromso.observer(), Tromso.SOMETIME_MIDWINTER, Tromso.ZONE);
+        Bitmap drawn = render(Tromso.observer(), Tromso.SOMETIME_MIDWINTER, Tromso.ZONE);
+
+        assertEquals("the dial's noon is under the all-day night band and nothing deeper",
+                ONE_COAT, shadeDepthAt(drawn, NOON));
+        assertEquals("03:00 is under all four", FOUR_COATS, shadeDepthAt(drawn, DEAD_OF_NIGHT));
+        assertTrue("the sun is still marked at high noon, " + path.highNoon().toLocalTime(),
+                sunOrangeAlong(drawn, Dial.angleFor(path.highNoon().toLocalTime())) > 0);
+    }
+
+    /**
+     * And in June the same place has no band at all: nothing is shaded
+     * anywhere, and only the high noon mark is drawn. A dial that is lit all
+     * round and still marks the meridian is the honest picture of a midnight
+     * sun; a cue that says so in words is a later improvement, not this one.
+     */
+    @Test
+    public void polarDayShadesNothingAndStillMarksHighNoon() {
+        SunPath path = SunPath.on(Tromso.observer(), Tromso.SOMETIME_MIDSUMMER, Tromso.ZONE);
+        Bitmap drawn = render(Tromso.observer(), Tromso.SOMETIME_MIDSUMMER, Tromso.ZONE);
+
+        assertEquals(0, paintedAlong(drawn, EARLY_EVENING));
+        assertEquals(0, paintedAlong(drawn, EARLY_MORNING));
+        assertEquals(0, paintedAlong(drawn, DEAD_OF_NIGHT));
+        assertTrue("the sun is still marked at high noon, " + path.highNoon().toLocalTime(),
+                sunOrangeAlong(drawn, Dial.angleFor(path.highNoon().toLocalTime())) > 0);
+    }
+
+    /**
      * The overlay alone on a transparent bitmap, for Buenos Aires' 15 August
      * whether or not it is told that is where it stands: the day asked about is
      * the same either way, so the observer is the only difference between the
@@ -244,14 +322,19 @@ public class SunPositionOverlayTest {
      */
     @NonNull
     private static Bitmap render(@Nullable Observer observer) {
+        return render(observer, BuenosAires.SOMETIME_THAT_DAY, BuenosAires.ZONE);
+    }
+
+    @NonNull
+    private static Bitmap render(@Nullable Observer observer, @NonNull Instant instant,
+            @NonNull ZoneId zone) {
         Bitmap bitmap =
                 Bitmap.createBitmap(INTRINSIC_PX, INTRINSIC_PX, Bitmap.Config.ARGB_8888);
         SunPositionOverlay overlay =
                 new SunPositionOverlay(RuntimeEnvironment.getApplication());
 
         overlay.setObserver(observer);
-        overlay.draw(new Canvas(bitmap), INTRINSIC_PX, BuenosAires.SOMETIME_THAT_DAY,
-                BuenosAires.ZONE);
+        overlay.draw(new Canvas(bitmap), INTRINSIC_PX, instant, zone);
 
         return bitmap;
     }

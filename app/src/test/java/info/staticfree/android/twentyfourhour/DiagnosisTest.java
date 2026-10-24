@@ -20,12 +20,14 @@ import org.robolectric.RuntimeEnvironment;
 import org.robolectric.shadows.ShadowAlarmManager;
 import org.robolectric.shadows.ShadowLog;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
 import info.staticfree.android.twentyfourhour.observer.LastKnownObserver;
+import info.staticfree.android.twentyfourhour.observer.Observer;
 import info.staticfree.android.twentyfourhour.overlay.SunPositionOverlay;
-import info.staticfree.android.twentyfourhour.sun.London;
+import info.staticfree.android.twentyfourhour.sun.Tromso;
 import info.staticfree.android.twentyfourhour.widget.UnansweredTap;
 
 /**
@@ -132,13 +134,18 @@ public class DiagnosisTest {
      * says so. The drawing cannot make that distinction — an unknown observer
      * and a known one with no path hatch the same nominal night — so the log is
      * the only place the two come apart.
+     *
+     * <p>Only the poles in their dark half have no path now that a missing
+     * horizon is a band of its own shape rather than a missing path; London,
+     * which used to stand here, has one.
      */
     @Test
     public void theMissingSunPathIsDiagnosedUnderTheOneTag() {
         SunPositionOverlay overlay = new SunPositionOverlay(context());
-        overlay.setObserver(London.observer());
+        overlay.setObserver(new Observer(90, 0));
 
-        overlay.draw(new Canvas(blankBitmap()), SIDE_PX, London.SOMETIME_THAT_DAY, London.ZONE);
+        overlay.draw(new Canvas(blankBitmap()), SIDE_PX, Tromso.SOMETIME_MIDWINTER,
+                ZoneId.of("UTC"));
 
         assertEquals("a place with no sun path should say so under the published tag",
                 singletonList(Diagnosis.TAG), tagsWritten());

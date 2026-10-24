@@ -129,7 +129,7 @@ public class SunPositionOverlay implements DialOverlay {
 
         SunPath path = SunPath.on(observer, instant, zone);
 
-        if (path == null || !everyBandIsAnArc(path)) {
+        if (path == null) {
             Log.w(Diagnosis.TAG,
                     "no sun path at " + observer + "; drawing the placeholder instead");
             drawPlaceholder(canvas);
@@ -137,35 +137,41 @@ public class SunPositionOverlay implements DialOverlay {
             return;
         }
 
-        drawInsetArc(canvas, arcAngleFor(path.night().evening()),
-                arcAngleFor(path.night().morning()), OVERLAY_SUNSET);
-        drawInsetArc(canvas, arcAngleFor(path.civilTwilight().evening()),
-                arcAngleFor(path.civilTwilight().morning()), OVERLAY_SUNSET);
-        drawInsetArc(canvas, arcAngleFor(path.nauticalTwilight().evening()),
-                arcAngleFor(path.nauticalTwilight().morning()), OVERLAY_SUNSET);
-        drawInsetArc(canvas, arcAngleFor(path.astronomicalTwilight().evening()),
-                arcAngleFor(path.astronomicalTwilight().morning()), OVERLAY_SUNSET);
+        drawBand(canvas, path.night());
+        drawBand(canvas, path.civilTwilight());
+        drawBand(canvas, path.nauticalTwilight());
+        drawBand(canvas, path.astronomicalTwilight());
 
-        // Marked without asking whether there was a day to mark the middle of.
-        // A SunPath searches back from High noon for its sunrise and forward for
-        // its sunset, so any path in hand has the one strictly before the other.
+        // Marked whatever the bands did. High noon is the meridian crossing,
+        // and a path in hand has one even where the sun never clears the
+        // horizon: Tromsø in December gets its mark on a fully shaded dial.
         float highNoonAngle = arcAngleFor(path.highNoon());
 
         canvas.drawArc(inset, highNoonAngle - HIGH_NOON_ARC_ANGLE / 2, HIGH_NOON_ARC_ANGLE, true,
                 OVERLAY_SUN);
     }
 
-    // Until the painter can draw a band that is never or all day, a path with
-    // one is treated as the all-or-nothing path used to be: no path at all.
-    private static boolean everyBandIsAnArc(@NonNull SunPath path) {
-        for (Band band : new Band[] {path.night(), path.civilTwilight(),
-                path.nauticalTwilight(), path.astronomicalTwilight()}) {
-            if (band.isNever() || band.isAllDay()) {
-                return false;
-            }
+    /**
+     * One coat of shade over the hours the sun spends below one horizon. The
+     * shape is asked for before the moments are, because the two shapes with
+     * no moments want opposite things of the canvas — and the same two angles:
+     * a band that is never and one that is all day both begin and end at one
+     * point, so a sweep worked out from the angles alone could not tell them
+     * apart and would draw nothing for both.
+     */
+    private void drawBand(@NonNull Canvas canvas, @NonNull Band band) {
+        if (band.isNever()) {
+            return;
         }
 
-        return true;
+        if (band.isAllDay()) {
+            canvas.drawArc(inset, 0, DEGREE_CIRCLE, true, OVERLAY_SUNSET);
+
+            return;
+        }
+
+        drawInsetArc(canvas, arcAngleFor(band.evening()), arcAngleFor(band.morning()),
+                OVERLAY_SUNSET);
     }
 
     private void drawInsetArc(@NonNull Canvas canvas, float startAngle, float endAngle,
